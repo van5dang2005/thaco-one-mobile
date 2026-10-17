@@ -160,6 +160,24 @@ export function roomHours(room: Pick<RoomDto, 'openedAt' | 'closedAt'> | null | 
   return { open: Math.min(open + offset, 24 * 60), close: Math.min(close + offset, 24 * 60) };
 }
 
+/**
+ * Room names without the leading words every room shares ("Phòng họp 18.1", "Phòng họp 18.2" → "18.1", "18.2"), for
+ * narrow column heads. Names stay whole with a single room, or when one name is nothing but the shared words.
+ */
+export function shortRoomNames(rooms: Pick<RoomDto, 'id' | 'name'>[]): Record<string, string> {
+  const words = rooms.map((r) => (r.name ?? '').trim().split(/\s+/));
+  let shared = 0;
+  while (rooms.length > 1 && words.every((w) => shared < w.length && w[shared].toLowerCase() === words[0][shared].toLowerCase())) shared++;
+  if (words.some((w) => w.length === shared)) shared = 0;
+  return Object.fromEntries(
+    rooms.map((r, i) => {
+      if (!shared) return [r.id, r.name ?? ''];
+      const rest = words[i].slice(shared).join(' ');
+      return [r.id, rest.charAt(0).toUpperCase() + rest.slice(1)];
+    }),
+  );
+}
+
 export function evaluateRoom({ room, sessions, startMin, endMin, people, bookings, crossLevel, excludeGroupId, today = todayKey() }: RoomCheckInput): RoomCheck {
   const warnings: RoomWarning[] = [];
   const blocked = (block: BlockReason): RoomCheck => ({ room, selectable: false, block, warnings, freeSessions: 0 });

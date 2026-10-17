@@ -17,12 +17,14 @@ type Props = {
   maxKey?: DateKey;
   /** Days with meetings: a 4pt dot under the date. */
   marked?: ReadonlySet<DateKey>;
+  /** Ringed in white while another day is selected (Lịch phòng). */
+  today?: DateKey;
   className?: string;
   testID?: string;
 };
 
 /** Seven-day strip on the blue header (v3): 56pt cells, radius 14; the selected day is white with blue text, weekends at 45%. */
-export function DayStrip({ value, onChange, start, days = 7, maxKey, marked, className = 'mt-3.5', testID }: Props) {
+export function DayStrip({ value, onChange, start, days = 7, maxKey, marked, today, className = 'mt-3.5', testID }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const keys = Array.from({ length: days }, (_, i) => addDays(start, i));
@@ -36,6 +38,7 @@ export function DayStrip({ value, onChange, start, days = 7, maxKey, marked, cla
         const disabled = !!maxKey && key > maxKey;
         const fg = selected ? colors.header : colors['header-name'];
         const dot = marked?.has(key);
+        const ringed = !selected && key === today;
         return (
           <Pressable
             key={key}
@@ -46,7 +49,11 @@ export function DayStrip({ value, onChange, start, days = 7, maxKey, marked, cla
             disabled={disabled}
             onPress={() => onChange(key)}
             className="h-14 flex-1 items-center justify-center gap-0.5 rounded-[14px] active:opacity-80"
-            style={{ backgroundColor: selected ? colors['header-name'] : 'transparent', opacity: disabled ? 0.3 : !selected && weekend ? 0.45 : 1 }}
+            style={[
+              // Today keeps full strength even on a weekend, so its ring reads.
+              { backgroundColor: selected ? colors['header-name'] : 'transparent', opacity: disabled ? 0.3 : !selected && !ringed && weekend ? 0.45 : 1 },
+              ringed ? { borderWidth: 1.5, borderColor: onBlue(0.85) } : null,
+            ]}
           >
             <Text weight={selected ? 'bold' : 'medium'} numberOfLines={1} maxFontSizeMultiplier={1.2} style={{ fontSize: 11, lineHeight: 14, color: selected ? colors.header : onBlue(0.75) }}>
               {t(`time.weekdayShort.${String(weekday) as '0'}`)}

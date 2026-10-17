@@ -19,8 +19,8 @@ type Props = {
   footer?: ReactNode;
   /** Above the footer row (error banner, summary). */
   footerNote?: ReactNode;
-  /** `canvas` #EDF1F6 (default), `home` #F2F4F8. */
-  background?: 'canvas' | 'home';
+  /** `canvas` #EDF1F6 (default), `home` #F2F4F8, `elevated` white (one white panel under a header that draws its own background). */
+  background?: 'canvas' | 'home' | 'elevated';
   /** Wrap children in a ScrollView with `CONTENT_PADDING` (default). `false` when the screen renders its own list. */
   scroll?: boolean;
   refreshControl?: ScrollViewProps['refreshControl'];
@@ -44,7 +44,7 @@ type Props = {
 /** One module screen of the v3 design: blue header, optional floating card, scrolling content, optional action bar. */
 export function ModuleScreen({ header, floating, children, footer, footerNote, background = 'canvas', scroll = true, refreshControl, scrollRef, overlay, floatingScrolls, overlap, testID }: Props) {
   const { colors } = useTheme();
-  const bg = background === 'home' ? colors['home-bg'] : colors.canvas;
+  const bg = background === 'elevated' ? colors.elevated : background === 'home' ? colors['home-bg'] : colors.canvas;
 
   if (floatingScrolls) {
     // The scroll view's own background is the header blue, so the pull-down area above the band is blue
