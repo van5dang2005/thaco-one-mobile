@@ -13,11 +13,5 @@ export function visitStage(visit: Pick<GuestScheduleItem, 'status'>): VisitStage
 export const visitStart = (visit: Pick<GuestScheduleItem, 'from'>) => parseServerDate(visit.from) ?? new Date(0);
 export const visitEnd = (visit: Pick<GuestScheduleItem, 'to'>) => parseServerDate(visit.to) ?? new Date(0);
 
-/** Whole minutes from `a` to `b` (negative when `b` is earlier). */
-export const minutesBetween = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 60_000);
-
-/** "45" → { h: 0, m: 45 }; "80" → { h: 1, m: 20 }. */
-export function splitMinutes(minutes: number) {
-  const total = Math.abs(minutes);
-  return { h: Math.floor(total / 60), m: total % 60 };
-}
+/** Sort comparator: earliest start first. */
+export const byStart = (a: Pick<GuestScheduleItem, 'from'>, b: Pick<GuestScheduleItem, 'from'>) => visitStart(a).getTime() - visitStart(b).getTime();

@@ -2,15 +2,15 @@ import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { goBack } from '@/shared/lib/navigation';
 import { Button } from '@/shared/ui/Button';
-import { HeaderIconButton } from '@/shared/ui/HeaderBar';
 import { Icon } from '@/shared/ui/Icon';
-import { CameraIcon, FlashlightIcon, FlashlightOffIcon, ScanQrCodeIcon } from '@/shared/ui/icons';
-import { ModuleHeader } from '@/shared/ui/ModuleHeader';
+import { type AppIcon, CameraIcon, ChevronLeftIcon, FlashlightIcon, FlashlightOffIcon, ScanQrCodeIcon } from '@/shared/ui/icons';
+import { useLightStatusBar } from '@/shared/ui/ScreenShell';
 import { Text } from '@/shared/ui/Text';
 
 import { camera, type CameraModule } from '../utils/camera';
@@ -20,48 +20,69 @@ const CORNER = 36;
 const CORNER_WIDTH = 4;
 /** Light blue that reads on any camera picture (the brand blue is too dark there). */
 const SCAN_ACCENT = '#5AA9FF';
-/** Panel under the camera. */
-const PANEL = '#1B2430';
+/** Frosted dark disc behind the floating buttons and the hint: readable over any camera picture. */
+const SCRIM = 'rgba(0, 0, 0, 0.42)';
 
 /**
- * "Quét mã QR" (guest check-in, step 1): the back camera under the blue header, a frame with a sweeping line,
- * the hint on a dark panel. A QR opens "Xác nhận vào cổng"; coming back here scans again.
+ * "Quét mã QR" (guest check-in, step 1): the back camera full screen with a frame and a sweeping line; the toolbar
+ * (back, title, torch) and the hint float over it. A QR opens "Xác nhận vào cổng"; coming back here scans again.
  */
 export function GuestScanScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [torch, setTorch] = useState(false);
   const cam = camera();
+  useLightStatusBar();
 
   return (
-    <View testID="guest-scan-screen" className="flex-1" style={{ backgroundColor: PANEL }}>
-      <ModuleHeader
-        testID="guest-scan-header"
-        title={t('guestSchedule.scan.title')}
-        bottom={14}
-        right={
-          cam ? (
-            <HeaderIconButton
-              testID="guest-scan-torch"
-              icon={torch ? FlashlightOffIcon : FlashlightIcon}
-              label={t(torch ? 'guestSchedule.scan.torchOff' : 'guestSchedule.scan.torchOn')}
-              onPress={() => setTorch((on) => !on)}
-            />
-          ) : null
-        }
-      />
+    <View testID="guest-scan-screen" className="flex-1" style={{ backgroundColor: '#000000' }}>
+      <View style={StyleSheet.absoluteFill}>{cam ? <Scanner cam={cam} torch={torch} /> : <Blocked message={t('guestSchedule.scan.unsupported')} />}</View>
 
-      <View className="flex-1 overflow-hidden" style={{ backgroundColor: '#000000' }}>
-        {cam ? <Scanner cam={cam} torch={torch} /> : <Blocked message={t('guestSchedule.scan.unsupported')} />}
+      <View testID="guest-scan-header" className="absolute left-0 right-0 top-0 min-h-10 flex-row items-center gap-3 px-4" style={{ paddingTop: insets.top + 10 }}>
+        <CamButton testID="guest-scan-back" icon={ChevronLeftIcon} label={t('common.back')} onPress={() => goBack('/guests')} />
+        <Text weight="bold" accessibilityRole="header" numberOfLines={1} className="flex-1 text-center" style={{ color: '#FFFFFF', fontSize: 17, lineHeight: 22 }}>
+          {t('guestSchedule.scan.title')}
+        </Text>
+        {cam ? (
+          <CamButton
+            testID="guest-scan-torch"
+            icon={torch ? FlashlightOffIcon : FlashlightIcon}
+            label={t(torch ? 'guestSchedule.scan.torchOff' : 'guestSchedule.scan.torchOn')}
+            active={torch}
+            onPress={() => setTorch((on) => !on)}
+          />
+        ) : (
+          <View className="w-10" />
+        )}
       </View>
 
-      <View className="flex-row items-center justify-center gap-3 px-8 pt-5" style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}>
-        <Icon icon={ScanQrCodeIcon} size={26} rawColor="#FFFFFF" />
-        <Text weight="medium" className="flex-shrink" style={{ color: '#FFFFFF', fontSize: 14, lineHeight: 20 }}>
-          {t('guestSchedule.scan.hint')}
-        </Text>
+      <View pointerEvents="none" className="absolute left-0 right-0 items-center px-8" style={{ bottom: Math.max(insets.bottom, 16) + 16 }}>
+        <View className="flex-row items-center gap-2.5 rounded-full py-2.5 pl-3.5 pr-4" style={{ backgroundColor: SCRIM }}>
+          <Icon icon={ScanQrCodeIcon} size={20} rawColor="#FFFFFF" />
+          <Text weight="medium" className="flex-shrink" style={{ color: '#FFFFFF', fontSize: 14, lineHeight: 20 }}>
+            {t('guestSchedule.scan.hint')}
+          </Text>
+        </View>
       </View>
     </View>
+  );
+}
+
+/** 40pt round button floating on the camera; `active` (torch on) turns it white. */
+function CamButton({ icon, label, onPress, active, testID }: { icon: AppIcon; label: string; onPress: () => void; active?: boolean; testID?: string }) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={active === undefined ? undefined : { selected: active }}
+      hitSlop={6}
+      onPress={onPress}
+      className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+      style={{ backgroundColor: active ? '#FFFFFF' : SCRIM }}
+    >
+      <Icon icon={icon} size={20} weight="bold" rawColor={active ? '#000000' : '#FFFFFF'} />
+    </Pressable>
   );
 }
 

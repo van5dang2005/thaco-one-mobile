@@ -23,34 +23,16 @@ export type StatItem = {
 /**
  * Three (or more) stats in a row, split by 1px #EEF2F6 lines: a 30pt tinted square icon (radius 9),
  * the value in mono 17/700 and an 11px muted label. Usually inside a `FloatingCard`.
- * `stacked`: icon, label, then a larger value, centered in each cell (dashboards whose labels run long).
  */
-export function StatStrip({ items, stacked, className, testID }: { items: StatItem[]; stacked?: boolean; className?: string; testID?: string }) {
+export function StatStrip({ items, className, testID }: { items: StatItem[]; className?: string; testID?: string }) {
   return (
-    <View testID={testID} className={cn('flex-row items-stretch px-1', stacked ? 'py-3.5' : 'py-2.5', className)}>
+    <View testID={testID} className={cn('flex-row items-stretch px-1 py-2.5', className)}>
       {items.map((item, index) => (
         <Fragment key={item.key}>
           {index > 0 ? <View className="my-1 w-px bg-line-2" /> : null}
-          {stacked ? <StackedCell item={item} /> : <StatCell item={item} />}
+          <StatCell item={item} />
         </Fragment>
       ))}
-    </View>
-  );
-}
-
-function StackedCell({ item }: { item: StatItem }) {
-  const tone = useToneColors(item.tone);
-  return (
-    <View testID={item.testID} accessible accessibilityLabel={`${item.label}: ${item.value}`} className="min-w-0 flex-1 items-center gap-1 px-1.5">
-      <View className="mb-0.5 h-[34px] w-[34px] items-center justify-center rounded-[10px]" style={{ backgroundColor: tone.tint }}>
-        <Icon icon={item.icon} size={18} rawColor={tone.solid} />
-      </View>
-      <Text numberOfLines={1} maxFontSizeMultiplier={1.2} className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
-        {item.label}
-      </Text>
-      <Text mono weight="bold" numberOfLines={1} maxFontSizeMultiplier={1.2} style={{ fontSize: 22, lineHeight: 27, color: tone.solid }}>
-        {String(item.value)}
-      </Text>
     </View>
   );
 }
