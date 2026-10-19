@@ -686,6 +686,10 @@ const en: Translation = {
     withMe: 'With you',
     clearSelection: 'Clear selection',
     openDay: 'Open day',
+    backToNow: 'Now',
+    zoomOut: 'Show the whole day',
+    zoomIn: 'Zoom in on the hours',
+    dragHint: 'Drag to move it, drag the top or bottom edge to change its length',
   },
   booking: {
     bookTitle: 'Book a meeting room',

@@ -1,9 +1,9 @@
+import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import { memo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, G, Line, LinearGradient, Polygon, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useRoomMe } from '@/core/session/useMe';
 import { sameId } from '@/core/session/userTypes';
@@ -16,22 +16,22 @@ import { goBack } from '@/shared/lib/navigation';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { Button } from '@/shared/ui/Button';
 import { DatePickerSheet } from '@/shared/ui/DatePickerSheet';
-import { HeaderActionButton } from '@/shared/ui/HeaderBar';
+import { HeaderActionButton, HeaderTitleIcon } from '@/shared/ui/HeaderBar';
 import { Icon } from '@/shared/ui/Icon';
-import { type AppIcon, ArrowRightIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, DoorOpenIcon, MapPinIcon, PlusIcon, XIcon } from '@/shared/ui/icons';
+import { type AppIcon, ArrowRightIcon, ChartGanttIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, DoorOpenIcon, MapPinIcon, PlusIcon, XIcon } from '@/shared/ui/icons';
 import { ModuleScreen } from '@/shared/ui/ModuleScreen';
 import { RoundIcon } from '@/shared/ui/RoundIcon';
 import { onBlue, useHeaderColors, useLightStatusBar } from '@/shared/ui/ScreenShell';
 import { shadows } from '@/shared/ui/shadows';
-import { Skeleton } from '@/shared/ui/Skeleton';
 import { EmptyState, ErrorState } from '@/shared/ui/StateViews';
 import { BookingBadge } from '@/shared/ui/StatusBadge';
 import { Text } from '@/shared/ui/Text';
 import { toast } from '@/shared/ui/Toast';
 
 import { useAreaPicker } from '../components/AreaPicker';
+import { CalendarHeaderArt } from '../components/CalendarHeaderArt';
 import { DayStrip } from '../components/DayStrip';
-import { AXIS_WIDTH, RoomTimeline, type BlockInfo, type SlotSelection } from '../components/RoomTimeline';
+import { RoomTimeline, TimelineSkeleton, type BlockInfo, type SlotSelection } from '../components/RoomTimeline';
 import { useApprovalLevels } from '../hooks/useApprovalLevels';
 import { useCrossLevel } from '../hooks/useCrossLevel';
 import { useDefaultAreaId } from '../hooks/useDefaultAreaId';
@@ -49,10 +49,17 @@ type Mode = 'day' | 'week';
 const DURATIONS = [30, 60, 90, 120];
 
 /**
+ * Gap between the toolbar and the area, where the header's picture shows: 28pt on today's phones, down to 10pt on a
+ * 667pt-tall screen (iPhone SE), so a short screen keeps its hours for the schedule.
+ */
+const pictureGap = (windowHeight: number) => Math.round(Math.min(28, Math.max(10, 10 + (windowHeight - 667) / 6)));
+
+/**
  * 3a: rooms × hours for one day (or the week as an agenda). Tap an empty slot to book it. The header is a picture of
- * an office district at blue hour: Back, the area picker and "Đặt phòng" on top, the month as its headline beside
- * Ngày / Tuần, then the week on a frosted band between ‹ ›. The schedule fills a square-cornered white panel edge to
- * edge below (rounded corners clipped the last room's head).
+ * an office district, by day or by night with the theme (`CalendarHeaderArt`): Back, the title and "Đặt phòng" on
+ * top, the picture between them and the area picker, the month as the headline under it beside Ngày / Tuần, then the
+ * week on a frosted band between ‹ ›. The schedule fills a square-cornered panel edge to edge below (rounded corners
+ * clipped the last room's head): white paper with a column per room.
  */
 export function RoomCalendarScreen() {
   const { t } = useTranslation();
@@ -62,6 +69,7 @@ export function RoomCalendarScreen() {
   const me = useRoomMe();
   const now = useNow();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   useLightStatusBar();
   const defaultAreaId = useDefaultAreaId();
   const [areaChoice, setAreaChoice] = useState<string | undefined>();
@@ -137,6 +145,19 @@ export function RoomCalendarScreen() {
     return Math.min(start + minutes, close, nextStart);
   };
 
+  /**
+   * The free stretch around a slot starting at `start`, which the selection may be dragged in: from the end of the taken
+   * block before it (or opening time, or today's current quarter hour) to the start of the next one (or closing time).
+   */
+  const limitsFor = (room: RoomDto, start: number) => {
+    const { open } = roomHours(room);
+    const earliest = isToday ? Math.floor(nowMin / 15) * 15 : open;
+    const before = takenBlocks(room)
+      .filter((b) => b.endMin <= start)
+      .map((b) => b.endMin);
+    return { minStart: Math.min(start, Math.max(open, earliest, ...before)), maxEnd: endFor(room, start, 24 * 60) };
+  };
+
   const onPressSlot = (room: RoomDto, minute: number) => {
     const { open, close } = roomHours(room);
     if (minute < open || minute + 30 > close) {
@@ -156,6 +177,7 @@ export function RoomCalendarScreen() {
       toast.info(t('rooms.slotTaken'));
       return;
     }
+    void Haptics.selectionAsync();
     setSelection((current) => (current && sameId(current.roomId, room.id) && current.startMin === minute ? null : { roomId: room.id, startMin: minute, endMin: end }));
   };
 
@@ -204,31 +226,34 @@ export function RoomCalendarScreen() {
 
   const header = (
     <View testID="rooms-header" style={{ paddingTop: insets.top + 6, paddingHorizontal: 16, paddingBottom: 16 }}>
-      <HeaderArt />
+      <CalendarHeaderArt />
       <View className="min-h-11 flex-row items-center gap-3">
         <GlassButton testID="rooms-header-leading" icon={ChevronLeftIcon} label={t('common.back')} onPress={() => goBack()} />
-        {/* No title: the area picker stands in for it (screen readers still hear "Lịch phòng"). */}
-        <View className="min-w-0 flex-1">
-          <Pressable
-            testID="rooms-header-subtitle"
-            accessibilityRole="button"
-            accessibilityLabel={`${t('rooms.title')}, ${area.name}`}
-            accessibilityHint={t('rooms.chooseArea')}
-            onPress={area.open}
-            hitSlop={8}
-            className="flex-row items-center gap-1.5 self-start active:opacity-70"
-          >
-            <Icon icon={MapPinIcon} size={16} rawColor={fg} />
-            <Text weight="semibold" numberOfLines={1} maxFontSizeMultiplier={1.2} className="flex-shrink" style={{ fontSize: 14, lineHeight: 19, color: fg }}>
-              {area.name}
-            </Text>
-            <Icon icon={ChevronDownIcon} size={15} weight="bold" rawColor={onBlue(0.7)} />
-          </Pressable>
-        </View>
+        <HeaderTitleIcon icon={ChartGanttIcon} size={36} />
+        <Text weight="bold" numberOfLines={1} accessibilityRole="header" className="min-w-0 flex-1" style={{ fontSize: 18, lineHeight: 23, letterSpacing: -0.2, color: fg }}>
+          {t('rooms.title')}
+        </Text>
         {/* Up here instead of floating over the schedule's last hours. */}
         <HeaderActionButton testID="rooms-book" icon={PlusIcon} label={t('rooms.book')} onPress={book} />
       </View>
-      <View className="mt-5 flex-row items-center justify-between gap-3">
+      {/* The area in a frosted pill over the month, where the picture leaves room for a long name. */}
+      <Pressable
+        testID="rooms-header-subtitle"
+        accessibilityRole="button"
+        accessibilityLabel={area.name}
+        accessibilityHint={t('rooms.chooseArea')}
+        onPress={area.open}
+        hitSlop={6}
+        className="h-7 max-w-full flex-row items-center gap-1 self-start rounded-full pl-2.5 pr-2 active:opacity-70"
+        style={{ marginTop: pictureGap(windowHeight), backgroundColor: onBlue(0.16), borderWidth: 1, borderColor: onBlue(0.2) }}
+      >
+        <Icon icon={MapPinIcon} size={14} rawColor={fg} />
+        <Text weight="semibold" numberOfLines={1} maxFontSizeMultiplier={1.2} className="flex-shrink" style={{ fontSize: 13, lineHeight: 17, color: fg }}>
+          {area.name}
+        </Text>
+        <Icon icon={ChevronDownIcon} size={14} weight="bold" rawColor={onBlue(0.75)} />
+      </Pressable>
+      <View className="mt-2 flex-row items-center justify-between gap-3">
         <MonthTitle dateKey={dateKey} onPress={() => setDatePicker(true)} />
         <ModeSwitch
           mode={mode}
@@ -287,7 +312,10 @@ export function RoomCalendarScreen() {
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active, disabled: !fits }}
                 disabled={!fits}
-                onPress={() => setSelection({ ...selection, endMin: selection.startMin + minutes })}
+                onPress={() => {
+                  void Haptics.selectionAsync();
+                  setSelection({ ...selection, endMin: selection.startMin + minutes });
+                }}
                 className={cn('h-8 justify-center rounded-full px-3 active:opacity-70', active ? 'bg-primary' : 'border border-input-border', !fits && 'opacity-40')}
               >
                 <Text numeric weight={active ? 'bold' : 'semibold'} numberOfLines={1} className={active ? 'text-on-primary' : 'text-ink-2'} style={{ fontSize: 12.5, lineHeight: 16 }}>
@@ -352,6 +380,9 @@ export function RoomCalendarScreen() {
           startHour={BOOKING_HOURS.start}
           endHour={BOOKING_HOURS.end}
           selection={selection}
+          selectionLimits={selection && selectedRoom ? limitsFor(selectedRoom, selection.startMin) : undefined}
+          onChangeSelection={setSelection}
+          onClearSelection={() => setSelection(null)}
           blockInfo={blockInfo}
           onPressBlock={onPressBlock}
           onPressSlot={onPressSlot}
@@ -361,8 +392,8 @@ export function RoomCalendarScreen() {
     );
 
   return (
-    <ModuleScreen header={header} footer={footer} footerNote={footerNote} scroll={false} background="elevated">
-      <View className={cn('flex-1 bg-elevated', scheme === 'dark' && 'border-t border-line')} style={shadows.footer}>
+    <ModuleScreen header={header} footer={footer} footerNote={footerNote} scroll={false}>
+      <View className={cn('flex-1 bg-canvas', scheme === 'dark' && 'border-t border-line')} style={shadows.footer}>
         {body}
       </View>
 
@@ -390,109 +421,6 @@ export function RoomCalendarScreen() {
   );
 }
 
-/** Picture geometry in its 400×300 box, ground (y = 300) on the panel's top edge: towers as [x, width, height]. */
-const FAR_TOWERS: [number, number, number][] = [
-  [0, 18, 78], [16, 14, 98], [30, 22, 68], [50, 16, 107], [64, 24, 83], [86, 14, 112], [98, 20, 77], [116, 18, 98], [132, 26, 88], [156, 14, 114], [168, 22, 81], [188, 16, 104],
-  [202, 24, 91], [224, 14, 109], [236, 20, 79], [254, 18, 98], [270, 26, 86], [294, 16, 110], [308, 22, 82], [328, 14, 103], [340, 24, 88], [362, 16, 108], [376, 24, 83],
-];
-/** Mid towers gather around the glass tower on the right; the left half, behind the text, keeps only the far line. */
-const MID_TOWERS: [number, number, number][] = [
-  [150, 44, 64], [192, 30, 86], [226, 40, 124], [264, 46, 94], [372, 34, 134],
-];
-const GLASS_TOWER: [number, number, number] = [316, 58, 232];
-
-/** A sparse few lit panes per tower on a 7 × 9 grid (panes at +2/+2, 3 × 4), all above the week band (y ≤ 204). */
-function litPanes(towers: [number, number, number][], seed: number) {
-  const panes: [number, number][] = [];
-  towers.forEach(([x, w, h], index) => {
-    for (let px = Math.ceil(x / 7) * 7 + 2; px + 3 <= x + w - 2; px += 7) {
-      for (let py = Math.ceil((300 - h) / 9) * 9 + 2; py <= 204; py += 9) {
-        if ((px * 31 + py * 17 + index * 7 + seed) % 13 === 0) panes.push([px, py]);
-      }
-    }
-  });
-  return panes;
-}
-const LIT_MID = litPanes(MID_TOWERS, 3);
-
-/**
- * The header's picture: an office district at blue hour. A low, hazy skyline runs along the bottom; on the right a glass
- * tower catches a glow among a few mid towers with sparse lit windows, so the left half behind the text stays calm. A
- * scrim at the top keeps the status bar and toolbar readable; night dims the whole picture.
- */
-const HeaderArt = memo(function HeaderArt() {
-  const { scheme } = useTheme();
-  const [gx, gw, gh] = GLASS_TOWER;
-  const gTop = 300 - gh;
-  return (
-    // Sized by absoluteFill alone: percentage sizes on an absolute child resolve against the header's padded content box.
-    <Svg pointerEvents="none" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" style={StyleSheet.absoluteFill}>
-      <Defs>
-        <LinearGradient id="artSky" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#03204A" />
-          <Stop offset="0.55" stopColor="#0A4A8E" />
-          <Stop offset="1" stopColor="#1263B5" />
-        </LinearGradient>
-        <LinearGradient id="artSide" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor="#2C8BE6" stopOpacity={0} />
-          <Stop offset="1" stopColor="#2C8BE6" stopOpacity={0.35} />
-        </LinearGradient>
-        <RadialGradient id="artGlow" cx="330" cy="130" r="190" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#7BC0FF" stopOpacity={0.32} />
-          <Stop offset="1" stopColor="#7BC0FF" stopOpacity={0} />
-        </RadialGradient>
-        <LinearGradient id="artGlass" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor="#1A64B0" />
-          <Stop offset="1" stopColor="#0A3D78" />
-        </LinearGradient>
-        <LinearGradient id="artGleam" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.22} />
-          <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
-        </LinearGradient>
-        <LinearGradient id="artScrim" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#021733" stopOpacity={0.6} />
-          <Stop offset="0.4" stopColor="#021733" stopOpacity={0} />
-        </LinearGradient>
-      </Defs>
-      <Rect width={400} height={300} fill="url(#artSky)" />
-      <Rect width={400} height={300} fill="url(#artSide)" />
-      <Rect width={400} height={300} fill="url(#artGlow)" />
-      <G fill="#4F8FD6" fillOpacity={0.16}>
-        {FAR_TOWERS.map(([x, w, h]) => (
-          <Rect key={x} x={x} y={300 - h} width={w} height={h} />
-        ))}
-      </G>
-      <G fill="#0B3A72" fillOpacity={0.85}>
-        {MID_TOWERS.map(([x, w, h]) => (
-          <Rect key={x} x={x} y={300 - h} width={w} height={h} />
-        ))}
-      </G>
-      <G fill="#DCEBFF" fillOpacity={0.5}>
-        {LIT_MID.map(([px, py]) => (
-          <Rect key={`${px}-${py}`} x={px} y={py} width={3} height={4} />
-        ))}
-      </G>
-      {/* Glass tower: spire, facade grid, a diagonal gleam and a lit roof edge. */}
-      <Rect x={gx + gw / 2 - 1} y={gTop - 20} width={2} height={20} fill="#7DB8F5" fillOpacity={0.6} />
-      <Rect x={gx} y={gTop} width={gw} height={gh} fill="url(#artGlass)" />
-      <G stroke="#8CC4FA" strokeOpacity={0.22} strokeWidth={0.8}>
-        {Array.from({ length: Math.floor(gw / 6) }, (_, i) => (
-          <Line key={i} x1={gx + 6 * (i + 1)} x2={gx + 6 * (i + 1)} y1={gTop} y2={300} />
-        ))}
-      </G>
-      <G stroke="#8CC4FA" strokeOpacity={0.12} strokeWidth={0.8}>
-        {Array.from({ length: Math.floor(gh / 9) }, (_, i) => (
-          <Line key={i} x1={gx} x2={gx + gw} y1={gTop + 9 * (i + 1)} y2={gTop + 9 * (i + 1)} />
-        ))}
-      </G>
-      <Polygon points={`${gx + 4},${gTop} ${gx + 26},${gTop} ${gx + gw},${gTop + 96} ${gx + gw},${gTop + 136}`} fill="url(#artGleam)" />
-      <Rect x={gx} y={gTop} width={gw} height={2} fill="#9CD0FF" fillOpacity={0.5} />
-      <Rect width={400} height={300} fill="url(#artScrim)" />
-      {scheme === 'dark' ? <Rect width={400} height={300} fill="#000814" fillOpacity={0.35} /> : null}
-    </Svg>
-  );
-});
-
 /** Frosted round button on the blue: white 16% with a 24% white hairline. */
 function GlassButton({ icon, label, onPress, testID }: { icon: AppIcon; label: string; onPress: () => void; testID?: string }) {
   const { fg } = useHeaderColors();
@@ -511,13 +439,19 @@ function GlassButton({ icon, label, onPress, testID }: { icon: AppIcon; label: s
   );
 }
 
-/** Ngày / Tuần on the blue: black 14% track like HeaderSegmented, the selected segment white with primary text. */
+/**
+ * Ngày / Tuần on the picture: black 14% track like HeaderSegmented by day, frosted like the week band at night (black
+ * vanishes on the night sky); the selected segment white with header-blue text, like the selected day.
+ */
 function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   const { fg, soft } = useHeaderColors();
   return (
-    <View className="h-9 flex-row rounded-full p-[3px]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.14)' }}>
+    <View
+      className="h-9 flex-row rounded-full p-[3px]"
+      style={scheme === 'dark' ? { backgroundColor: onBlue(0.1), borderWidth: 1, borderColor: onBlue(0.16) } : { backgroundColor: 'rgba(0, 0, 0, 0.14)' }}
+    >
       {(['day', 'week'] as const).map((m) => {
         const active = m === mode;
         return (
@@ -530,7 +464,7 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
             className="justify-center rounded-full px-3.5 active:opacity-80"
             style={active ? [shadows.raised, { backgroundColor: fg }] : undefined}
           >
-            <Text weight={active ? 'bold' : 'semibold'} style={{ fontSize: 12.5, lineHeight: 16, color: active ? colors.primary : soft }}>
+            <Text weight={active ? 'bold' : 'semibold'} style={{ fontSize: 12.5, lineHeight: 16, color: active ? colors.header : soft }}>
               {m === 'day' ? t('rooms.dayMode') : t('rooms.weekMode')}
             </Text>
           </Pressable>
@@ -663,7 +597,7 @@ function AgendaCard({ booking, title, mine, now, onPress }: { booking: BookingDt
       accessibilityRole="button"
       onPress={onPress}
       className="flex-row overflow-hidden rounded-[12px] active:opacity-75"
-      style={{ backgroundColor: colors.panel, borderWidth: mine ? 1.5 : 1, borderColor: mine ? colors.primary : colors.line }}
+      style={{ backgroundColor: colors.elevated, borderWidth: mine ? 1.5 : 1, borderColor: mine ? colors.primary : colors.line }}
     >
       <View style={{ width: 3, backgroundColor: bar }} />
       <View className="min-w-0 flex-1 flex-row items-center gap-2.5 py-2.5 pl-2.5 pr-3" style={{ opacity: over ? 0.7 : 1 }}>
@@ -687,33 +621,5 @@ function AgendaCard({ booking, title, mine, now, onPress }: { booking: BookingDt
         <BookingBadge status={booking.status ?? 1} live={live} />
       </View>
     </Pressable>
-  );
-}
-
-/** Loading: the timeline's shape (heads with their day map, a few blocks) rather than generic bars. */
-function TimelineSkeleton() {
-  return (
-    <View className="flex-1" accessibilityLabel="loading">
-      <View className="flex-row gap-3 border-b border-line py-3 pr-4" style={{ paddingLeft: AXIS_WIDTH + 8 }}>
-        {[0, 1, 2].map((i) => (
-          <View key={i} className="flex-1 gap-1.5">
-            <Skeleton width="55%" height={14} />
-            <Skeleton width="45%" height={14} radius={8} />
-            <Skeleton height={4} radius={2} />
-          </View>
-        ))}
-      </View>
-      <View className="flex-row gap-3 pr-4 pt-4" style={{ paddingLeft: AXIS_WIDTH + 8 }}>
-        {[
-          [16, 120],
-          [70, 190],
-          [0, 96],
-        ].map(([top, height], i) => (
-          <View key={i} className="flex-1" style={{ paddingTop: top }}>
-            <Skeleton height={height} radius={10} />
-          </View>
-        ))}
-      </View>
-    </View>
   );
 }

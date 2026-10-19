@@ -161,19 +161,27 @@ export function roomHours(room: Pick<RoomDto, 'openedAt' | 'closedAt'> | null | 
 }
 
 /**
- * Room names without the leading words every room shares ("Phòng họp 18.1", "Phòng họp 18.2" → "18.1", "18.2"), for
- * narrow column heads. Names stay whole with a single room, or when one name is nothing but the shared words.
+ * How a room heads its column: a small group line over a short name. A brand before "_" is the group
+ * ("MAZDA _Phòng họp 1" → MAZDA / 1); then the leading words every name shares drop out ("Phòng họp 18.1",
+ * "Phòng họp 18.2" → 18.1, 18.2) and, where there is no brand, become the group (Phòng họp / 18.1). Names stay whole
+ * with a single room, or when one name is nothing but the shared words.
  */
-export function shortRoomNames(rooms: Pick<RoomDto, 'id' | 'name'>[]): Record<string, string> {
-  const words = rooms.map((r) => (r.name ?? '').trim().split(/\s+/));
+export function roomLabels(rooms: Pick<RoomDto, 'id' | 'name'>[]): Record<string, { group: string; name: string }> {
+  const parts = rooms.map((r) => {
+    const full = (r.name ?? '').trim();
+    const cut = full.indexOf('_');
+    return cut > 0 ? { group: full.slice(0, cut).trim(), rest: full.slice(cut + 1).trim() } : { group: '', rest: full };
+  });
+  const words = parts.map((p) => p.rest.split(/\s+/).filter(Boolean));
   let shared = 0;
   while (rooms.length > 1 && words.every((w) => shared < w.length && w[shared].toLowerCase() === words[0][shared].toLowerCase())) shared++;
   if (words.some((w) => w.length === shared)) shared = 0;
+  const common = shared ? words[0].slice(0, shared).join(' ') : '';
   return Object.fromEntries(
     rooms.map((r, i) => {
-      if (!shared) return [r.id, r.name ?? ''];
+      if (!shared) return [r.id, { group: parts[i].group, name: parts[i].rest }];
       const rest = words[i].slice(shared).join(' ');
-      return [r.id, rest.charAt(0).toUpperCase() + rest.slice(1)];
+      return [r.id, { group: parts[i].group || common, name: rest.charAt(0).toUpperCase() + rest.slice(1) }];
     }),
   );
 }
@@ -291,6 +299,38 @@ export const blockTime = (b: { startMin: number; endMin: number }) =>
 /** A room is "in use" when an approved booking covers the current minute. */
 export function isRoomBusy(blocks: TimelineBlock[], nowMin: number) {
   return blocks.some((b) => (b.kind === 'approved' || b.kind === 'finished') && nowMin >= b.startMin && nowMin < b.endMin);
+}
+
+/** Stretches of `from`–`to` that no block covers, `min` minutes or longer: the free slots of a room's lane. */
+export function freeGaps(blocks: Pick<TimelineBlock, 'startMin' | 'endMin'>[], from: number, to: number, min = 15) {
+  const gaps: { startMin: number; endMin: number }[] = [];
+  let cursor = from;
+  [...blocks]
+    .sort((a, b) => a.startMin - b.startMin)
+    .forEach((b) => {
+      const end = Math.min(b.startMin, to);
+      if (end - cursor >= min) gaps.push({ startMin: cursor, endMin: end });
+      cursor = Math.max(cursor, b.endMin);
+    });
+  if (to - cursor >= min) gaps.push({ startMin: cursor, endMin: to });
+  return gaps;
+}
+
+/** What a drag on the selected slot holds: its top edge, its bottom edge, or the whole card. */
+export type DragHandle = 'start' | 'end' | 'move';
+
+/**
+ * Where a dragged selection lands: `delta` minutes from where it was picked up, in `snap` steps, inside
+ * `minStart`–`maxEnd` and never shorter than one step. A worklet: it runs on the UI thread while the finger moves.
+ */
+export function dragSelection(handle: DragHandle, startMin: number, endMin: number, delta: number, minStart: number, maxEnd: number, snap = 15) {
+  'worklet';
+  const step = Math.round(delta / snap) * snap;
+  if (handle === 'start') return { startMin: Math.max(minStart, Math.min(startMin + step, endMin - snap)), endMin };
+  if (handle === 'end') return { startMin, endMin: Math.min(maxEnd, Math.max(endMin + step, startMin + snap)) };
+  const span = endMin - startMin;
+  const start = Math.max(minStart, Math.min(startMin + step, maxEnd - span));
+  return { startMin: start, endMin: start + span };
 }
 
 // ---- approval stepper (3e) ----------------------------------------------------------------------

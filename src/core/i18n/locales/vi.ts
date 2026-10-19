@@ -686,6 +686,10 @@ const vi = {
     withMe: 'Có bạn',
     clearSelection: 'Bỏ chọn',
     openDay: 'Xem ngày',
+    backToNow: 'Bây giờ',
+    zoomOut: 'Xem cả ngày',
+    zoomIn: 'Phóng to giờ',
+    dragHint: 'Kéo để dời giờ, kéo mép trên hoặc dưới để đổi thời lượng',
   },
   booking: {
     bookTitle: 'Đặt phòng họp',
