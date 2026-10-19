@@ -3,6 +3,9 @@ function trimSlash(url: string) {
   return url.replace(/\/+$/, '');
 }
 
+/** A phone app Home opens: its link per platform (empty: none) and its store pages. */
+export type PhoneApp = { url: { ios: string; android: string }; storeUrl: { ios: string; android: string } };
+
 /**
  * Runtime configuration. EXPO_PUBLIC_* values are inlined at build time, so they must be read with
  * literal `process.env.EXPO_PUBLIC_…` member expressions.
@@ -14,10 +17,38 @@ export const env = {
   roomApiUrl: trimSlash(process.env.EXPO_PUBLIC_ROOM_API_URL ?? 'https://datphonghopapi.thaco.com.vn/'),
   /** Origin of the guest-schedule back-end (gate check-in by QR; no trailing /api). Only the UAT host is known so far. */
   guestApiUrl: trimSlash(process.env.EXPO_PUBLIC_GUEST_API_URL || 'https://api01.thaco.com.vn'),
-  /** Deep link that opens THACO Paytime; falls back to the store URL when it cannot be opened. */
+  /** Internal IT hotline behind "Liên hệ IT nội bộ" (login and Profile); empty shows a message instead. */
   itSupportPhone: process.env.EXPO_PUBLIC_IT_SUPPORT_PHONE ?? '',
   /** THACO apps portal: which applications (parcel, room, văn thư…) the signed-in account may use. */
   appsApiUrl: trimSlash(process.env.EXPO_PUBLIC_APPS_API_URL || 'https://appsapi.thaco.com.vn'),
+  /**
+   * Phone apps that a portal tile opens instead of its web app (`MyApp.url`), keyed by portal code: the link that
+   * opens the app on each platform, and its store pages. The store page opens when the link fails (not installed),
+   * or straight away on a platform with no link.
+   */
+  phoneApps: {
+    ESIGN_WEB: {
+      url: {
+        ios: process.env.EXPO_PUBLIC_ESIGN_IOS_URL ?? 'com.thaco.esign://',
+        // THACO ESIGN registers no link on Android: the Play Store page shows "Mở" when it is installed.
+        android: process.env.EXPO_PUBLIC_ESIGN_ANDROID_URL ?? '',
+      },
+      storeUrl: {
+        ios: process.env.EXPO_PUBLIC_ESIGN_IOS_STORE_URL ?? 'https://apps.apple.com/vn/app/thaco-esign/id6759150412',
+        android: process.env.EXPO_PUBLIC_ESIGN_ANDROID_STORE_URL ?? 'https://play.google.com/store/apps/details?id=com.thaco.esign',
+      },
+    },
+    PAYTIME: {
+      url: {
+        ios: process.env.EXPO_PUBLIC_PAYTIME_IOS_URL ?? 'thacopaytime://',
+        android: process.env.EXPO_PUBLIC_PAYTIME_ANDROID_URL ?? 'thacopaytime://',
+      },
+      storeUrl: {
+        ios: process.env.EXPO_PUBLIC_PAYTIME_IOS_STORE_URL ?? 'https://apps.apple.com/vn/app/thaco-paytime/id6762419210',
+        android: process.env.EXPO_PUBLIC_PAYTIME_ANDROID_STORE_URL ?? 'https://play.google.com/store/apps/details?id=vn.com.thaco.paytime',
+      },
+    },
+  } satisfies Record<string, PhoneApp>,
   sso: {
     issuer: trimSlash(process.env.EXPO_PUBLIC_SSO_ISSUER || 'https://sso.thaco.com.vn/realms/thacogroup'),
     clientId: process.env.EXPO_PUBLIC_SSO_CLIENT_ID ?? 'THACO_SSO',

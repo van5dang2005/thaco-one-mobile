@@ -1,4 +1,7 @@
+import { Platform } from 'react-native';
+
 import type { ServiceId } from '@/core/api/ApiError';
+import { env, type PhoneApp } from '@/core/config/env';
 import type { Capability } from '@/core/session/capabilities';
 import { type MyApp, serviceAppCodes, sortApps } from '@/core/session/myApps';
 import { AppWindowIcon } from '@/shared/ui/icons';
@@ -36,10 +39,29 @@ export function shortAppName(name: string) {
   return short ? short.charAt(0).toUpperCase() + short.slice(1) : name;
 }
 
-/** Tile of a granted app without screens here: its web app (`url`) under the portal's name and icon; `null` with nothing to open. */
-export function webModule(app: MyApp): HomeModule | null {
+type Os = 'ios' | 'android';
+
+/**
+ * Where the tile of the phone app `env.phoneApps` names for portal `code` goes on `os`: its link, with the store page
+ * to offer when the link fails; or the store page itself when the app has no link there. `null`: not a phone app.
+ */
+export function phoneAppLink(code: string, os: Os, apps: Record<string, PhoneApp> = env.phoneApps): Pick<HomeModule, 'externalUrl' | 'storeUrl'> | null {
+  const app = apps[code];
+  const url = app?.url[os].trim();
+  const store = app?.storeUrl[os].trim();
+  if (url) return { externalUrl: url, storeUrl: store ? app.storeUrl : undefined };
+  return store ? { externalUrl: store } : null;
+}
+
+/**
+ * Tile of a granted app without screens here, under the portal's name and icon: its phone app when `env.phoneApps`
+ * names one, else its web app (`url`); `null` with nothing to open.
+ */
+export function webModule(app: MyApp, os: Os = Platform.OS === 'ios' ? 'ios' : 'android'): HomeModule | null {
+  const phone = phoneAppLink(app.code, os);
   const url = app.url?.trim();
-  if (!url || !OPENABLE_URL.test(url)) return null;
+  const target = phone ?? (url && OPENABLE_URL.test(url) ? { externalUrl: url } : null);
+  if (!target) return null;
   const title = app.name?.trim() || app.code;
   return {
     id: `app:${app.code}`,
@@ -49,7 +71,8 @@ export function webModule(app: MyApp): HomeModule | null {
     icon: AppWindowIcon,
     iconUrl: app.icon?.trim() || undefined,
     description: app.description?.trim() || undefined,
-    externalUrl: url,
+    ...target,
+    opensApp: !!phone,
   };
 }
 

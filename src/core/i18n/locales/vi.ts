@@ -355,6 +355,7 @@ const vi = {
       documentsOverdue: '{{count}} quá hạn',
       documentsNone: 'Không có văn bản chờ',
       webApp: 'Mở trên trình duyệt',
+      phoneApp: 'Mở ứng dụng',
     },
     layoutSheet: {
       title: 'Giao diện trang chủ',

@@ -235,7 +235,8 @@ function ModuleCard({ module, summary, count, onOpen }: { module: HomeModule; su
   const { colors } = useTheme();
   const { t } = useTranslation();
   // Portal apps have no summary hook: their description, else where they open.
-  const note = summary?.data ?? (summary?.isLoading ? undefined : module.description ?? (module.externalUrl ? t('home.summary.webApp') : undefined));
+  const opensIn = module.opensApp ? t('home.summary.phoneApp') : module.externalUrl ? t('home.summary.webApp') : undefined;
+  const note = summary?.data ?? (summary?.isLoading ? undefined : module.description ?? opensIn);
   const urgent = !!count && !!module.urgentWhenBadged;
   const edge = useHomeCardEdge();
   return (

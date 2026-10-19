@@ -355,6 +355,7 @@ const en: Translation = {
       documentsOverdue: '{{count}} overdue',
       documentsNone: 'Nothing waiting',
       webApp: 'Opens in the browser',
+      phoneApp: 'Opens the app',
     },
     layoutSheet: {
       title: 'Home layout',

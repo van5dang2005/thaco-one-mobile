@@ -63,6 +63,8 @@ export type HomeModule = ModuleLabel & {
   /** Another app or a web page. Falls back to `storeUrl` when it cannot be opened. Shows the ↗ marker. */
   externalUrl?: string;
   storeUrl?: { ios: string; android: string };
+  /** `externalUrl` opens a phone app (or its store page), not a web app in the browser. */
+  opensApp?: boolean;
   /** Hidden when the user may not use it. */
   permission?: ModulePermission;
   /** Hook: red count on the icon. */

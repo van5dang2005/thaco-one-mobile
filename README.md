@@ -28,7 +28,8 @@ Cấu hình app nằm ở `app.config.ts`. Biến môi trường được quản
 |---|---|
 | `APP_ENV` | development / preview / production; đổi tên app thành "THACO ONE (Dev)" / "(Preview)" / "THACO ONE". Khi build, `eas.json` tự đặt theo profile |
 | `EXPO_PUBLIC_PARCEL_API_URL`, `EXPO_PUBLIC_ROOM_API_URL` | Gốc URL hai back-end (không có `/api`). Back-end .NET chạy local: `http://localhost:5211` (bưu phẩm), `http://localhost:5113` (phòng họp) |
-| `EXPO_PUBLIC_PAYTIME_URL`, `EXPO_PUBLIC_PAYTIME_IOS_STORE_URL`, `EXPO_PUBLIC_PAYTIME_ANDROID_STORE_URL` | Mở app THACO Paytime, hoặc trang cửa hàng nếu chưa cài |
+| `EXPO_PUBLIC_ESIGN_IOS_URL`, `EXPO_PUBLIC_ESIGN_ANDROID_URL`, `EXPO_PUBLIC_ESIGN_IOS_STORE_URL`, `EXPO_PUBLIC_ESIGN_ANDROID_STORE_URL` | Ô "Trình ký hồ sơ THACO" (portal `ESIGN_WEB`) mở app THACO ESIGN thay vì web; không mở được thì gợi ý cửa hàng. Link để trống: mở thẳng trang cửa hàng (Android E-Sign chưa có link). Mặc định nằm trong `src/core/config/env.ts` |
+| `EXPO_PUBLIC_PAYTIME_IOS_URL`, `EXPO_PUBLIC_PAYTIME_ANDROID_URL`, `EXPO_PUBLIC_PAYTIME_IOS_STORE_URL`, `EXPO_PUBLIC_PAYTIME_ANDROID_STORE_URL` | Ô "Chấm công PAYTIME" (portal `PAYTIME`) mở app THACO Paytime (`thacopaytime://`), tương tự |
 | `EXPO_PUBLIC_SSO_ISSUER`, `EXPO_PUBLIC_SSO_CLIENT_ID`, `EXPO_PUBLIC_SSO_SCOPES` | THACO SSO (Keycloak). Form đăng nhập luôn gửi tài khoản tới realm này (không mở trình duyệt), nên `CLIENT_ID` bắt buộc: client public, bật *Direct access grants*. Mặc định issuer `https://sso.thaco.com.vn/realms/thacogroup`, scope `openid profile email` |
 | `EXPO_PUBLIC_IT_SUPPORT_PHONE` | Số hotline IT ở màn đăng nhập (tùy chọn) |
 
