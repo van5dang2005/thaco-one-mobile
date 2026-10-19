@@ -1,8 +1,9 @@
 import { Pressable, ScrollView } from 'react-native';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
-import { onBlue, useHeaderColors } from '@/shared/ui/ScreenShell';
-import { Text } from '@/shared/ui/Text';
+
+import { onBlue, useHeaderColors } from './ScreenShell';
+import { Text } from './Text';
 
 export type HeaderChipOption<T extends string> = { value: T; label: string; count?: number; testID?: string };
 

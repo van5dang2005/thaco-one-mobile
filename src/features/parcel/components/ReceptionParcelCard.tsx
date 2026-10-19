@@ -1,18 +1,20 @@
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
-import { formatDayMonth, formatTime, isSameVnDay, parseServerDate } from '@/core/time/vn';
+import { sameId } from '@/core/session/userTypes';
+import { formatDayMonth, parseServerDate } from '@/core/time/vn';
 import { cn } from '@/shared/lib/cn';
 import { Avatar } from '@/shared/ui/Avatar';
+import { useCardStyle } from '@/shared/ui/Card';
 import { Icon } from '@/shared/ui/Icon';
 import { CheckIcon } from '@/shared/ui/icons';
-import { useCardStyle } from '@/shared/ui/Card';
 import { ParcelBadge } from '@/shared/ui/StatusBadge';
 import { Text } from '@/shared/ui/Text';
 
 import { ParcelStatus, type ParcelDto } from '../types';
-import { isOpenParcel, parcelDeadline, senderTitle } from '../utils/parcel';
-import { DeadlineBar } from './DeadlineBars';
+import { isOpenParcel, senderTitle, splitTracking } from '../utils/parcel';
+import { parcelSubline } from './ParcelCard';
+import { ParcelDeadlineTag } from './ParcelDeadlineTag';
 
 type Props = {
   parcel: ParcelDto;
@@ -21,24 +23,26 @@ type Props = {
   onPress: () => void;
 };
 
-/** Reception list card: tracking + status, sender, receiver, deadline. */
+/**
+ * Reception row, the "Bưu phẩm của tôi" row plus who it is for: a checkbox for open parcels (bulk
+ * handover), carrier code · parcel code · received date, the sender, the receiver with MSNV and unit,
+ * then status and deadline.
+ */
 export function ReceptionParcelCard({ parcel: p, selected, onToggle, onPress }: Props) {
   const { t } = useTranslation();
   const cardStyle = useCardStyle(false, selected);
   const open = isOpenParcel(p.status);
   const cancelled = p.status === ParcelStatus.Cancelled;
-  const deadline = parcelDeadline(p);
   const received = parseServerDate(p.receivedAt ?? p.createdAt);
-  const receivedText = received
-    ? t('parcels.receivedAt', { time: formatTime(received), date: isSameVnDay(received, new Date()) ? t('parcels.today') : formatDayMonth(received) })
-    : '';
+  const subline = parcelSubline(p);
 
   return (
     <Pressable
       testID={`reception-parcel-${p.trackingNumber}`}
       accessibilityRole="button"
+      accessibilityLabel={`${p.trackingNumber}, ${senderTitle(p)}, ${p.receiverFullName}`}
       onPress={onPress}
-      className={cn('flex-row gap-3 rounded-card p-3.5 active:opacity-90', cancelled && 'opacity-80')}
+      className="flex-row gap-3 rounded-card p-3.5 active:opacity-90"
       style={[cardStyle, { flexShrink: 0 }]}
     >
       {open ? (
@@ -46,42 +50,55 @@ export function ReceptionParcelCard({ parcel: p, selected, onToggle, onPress }: 
           testID={`reception-check-${p.trackingNumber}`}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: selected }}
+          accessibilityLabel={t('reception.select', { code: p.trackingNumber })}
           onPress={onToggle}
           hitSlop={12}
-          className={cn('mt-0.5 h-[22px] w-[22px] items-center justify-center rounded-[7px]', selected ? 'bg-primary' : 'border-2 border-line-strong')}
+          className={cn('h-[22px] w-[22px] items-center justify-center rounded-[7px]', selected ? 'bg-primary' : 'border-2 border-line-strong')}
         >
           {selected ? <Icon icon={CheckIcon} size={12} weight="bold" color="on-primary" /> : null}
         </Pressable>
       ) : null}
 
       <View className="min-w-0 flex-1 gap-2">
-        <View className="flex-row items-center justify-between gap-2">
-          <Text mono weight="medium" numberOfLines={1} className={cn('flex-1 text-meta', cancelled ? 'text-subtle' : 'text-muted')}>
-            {p.trackingNumber}
+        <View className="flex-row items-center gap-2">
+          <Text mono weight="bold" numberOfLines={1} className={cn('flex-shrink', cancelled && 'text-muted')} style={{ fontSize: 14, lineHeight: 18 }}>
+            {splitTracking(p.trackingNumber).code}
           </Text>
-          <ParcelBadge status={p.status} short />
+          <Text mono numberOfLines={1} className="flex-1 text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+            {p.transactionCode}
+          </Text>
+          {received ? (
+            <Text mono className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+              {formatDayMonth(received)}
+            </Text>
+          ) : null}
         </View>
 
-        <View className="gap-[3px]">
-          <Text weight="semibold" className={cn('text-card', cancelled && 'text-muted')} numberOfLines={2}>
+        <View className="gap-0.5">
+          <Text weight={open ? 'bold' : 'semibold'} numberOfLines={2} className={cancelled ? 'text-muted' : undefined} style={{ fontSize: 14, lineHeight: 20 }}>
             {senderTitle(p)}
           </Text>
-          <Text className="text-meta text-muted" numberOfLines={1}>
-            {receivedText}
-          </Text>
+          {subline ? (
+            <Text numberOfLines={1} className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+              {subline}
+            </Text>
+          ) : null}
         </View>
 
         <View className="flex-row items-center gap-2">
-          <Avatar name={p.receiverFullName} uri={p.receiverAvatarUrl} size={24} />
-          <Text className="flex-1 text-sub-sm" numberOfLines={1}>
-            <Text weight="semibold" className="text-sub-sm">
+          <Avatar name={p.receiverFullName} uri={p.receiverAvatarUrl} size={22} />
+          <Text numberOfLines={1} className="min-w-0 flex-1 text-muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+            <Text weight="semibold" className="text-ink" style={{ fontSize: 12.5, lineHeight: 17 }}>
               {p.receiverFullName}
             </Text>
             {` · ${[p.receiverCode, p.departmentName].filter(Boolean).join(' · ')}`}
           </Text>
         </View>
 
-        {open && deadline ? <DeadlineBar status={p.status} deadline={deadline} /> : null}
+        <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1.5">
+          <ParcelBadge status={p.status} short />
+          <ParcelDeadlineTag parcel={p} collector={p.actualReceiverCode && !sameId(p.actualReceiverCode, p.receiverCode) ? t('parcels.collectedBy', { code: p.actualReceiverCode }) : undefined} />
+        </View>
       </View>
     </Pressable>
   );

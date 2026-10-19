@@ -59,9 +59,17 @@ export type ParcelDto = {
   logs: ParcelLog[];
 };
 
+/** Why a parcel is in "Bưu phẩm của tôi": mine, or one I collect for its receiver. */
+export enum LookupMatchReason {
+  Direct = 0,
+  DetailedDelegation = 1,
+  DefaultDelegation = 2,
+}
+
 /** Item of GET /api/parcels/my: no createdAt / cancelledAt. */
 export type ParcelLookupDto = Omit<ParcelDto, 'createdAt' | 'cancelledAt' | 'cancellationReason'> & {
   createdAt?: string | null;
+  matchReason?: LookupMatchReason | null;
 };
 
 export type ParcelStats = {

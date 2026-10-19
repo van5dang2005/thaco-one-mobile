@@ -5,7 +5,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { useTheme } from '@/core/theme/ThemeProvider';
 import { formatKey, todayKey, weekdayOf } from '@/core/time/vn';
 import { usePullRefresh } from '@/shared/hooks/usePullRefresh';
-import { Card, Divider, PressableCard } from '@/shared/ui/Card';
+import { Card, Divider } from '@/shared/ui/Card';
 import { CountBadge } from '@/shared/ui/CountBadge';
 import { HeaderIconButton } from '@/shared/ui/HeaderBar';
 import { Icon } from '@/shared/ui/Icon';
@@ -23,15 +23,16 @@ import {
   UserCheckIcon,
 } from '@/shared/ui/icons';
 import { ModuleHeader } from '@/shared/ui/ModuleHeader';
-import { ModuleScreen } from '@/shared/ui/ModuleScreen';
+import { ModuleScreen, OVERLAP } from '@/shared/ui/ModuleScreen';
 import { RoundIcon } from '@/shared/ui/RoundIcon';
 import { useHeaderColors } from '@/shared/ui/ScreenShell';
 import { SectionTitle } from '@/shared/ui/SectionTitle';
 import { CardSkeleton } from '@/shared/ui/Skeleton';
+import { StatTile } from '@/shared/ui/StatTile';
 import { EmptyState, ErrorState } from '@/shared/ui/StateViews';
 import { Text } from '@/shared/ui/Text';
-import { type Tone, useToneColors } from '@/shared/ui/tones';
 
+import { DocumentsHeaderArt } from '../components/DocumentsHeaderArt';
 import { TaskCard } from '../components/TaskCard';
 import { useDocumentMe } from '../hooks/useDocumentMe';
 import { useDocumentSummary } from '../hooks/useDocumentSummary';
@@ -43,6 +44,7 @@ const TODAY_TASKS = 3;
 /** Văn thư home (8a): how much waits for me, four counters that open the matching list, the incoming and shared lists, today's tasks. */
 export function DocumentsHomeScreen() {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const { fg, text2, text3 } = useHeaderColors();
   const me = useDocumentMe();
   const { summary, isLoading, isError, error, refetch } = useDocumentSummary();
@@ -59,10 +61,11 @@ export function DocumentsHomeScreen() {
     <ModuleHeader
       testID="documents-header"
       icon={ScrollTextIcon}
+      art={<DocumentsHeaderArt />}
       title={t('documents.title')}
       subtitle={me.data?.unit ?? t('documents.home.subtitleFallback')}
       right={<HeaderIconButton testID="documents-search" icon={SearchIcon} label={t('documents.search')} onPress={() => router.push({ pathname: '/documents/incoming', params: { search: '1' } })} />}
-      bottom={12}
+      bottom={12 + OVERLAP}
     >
       {/* Equal blue above the date and under the count (to the cards' top edge): the block sits mid-header. */}
       <Text weight="bold" className="mt-3.5" style={{ fontSize: 11, lineHeight: 14, letterSpacing: 0.66, color: text3 }}>
@@ -118,7 +121,7 @@ export function DocumentsHomeScreen() {
               <StatTile
                 testID="documents-stat-stamp"
                 icon={StampIcon}
-                tone="document"
+                color={{ tint: colors['document-tint'], solid: colors.document }}
                 label={t('documents.home.toStamp')}
                 value={summary?.toStamp}
                 hint={summary ? (summary.toStamp ? t('documents.home.toStampHint', { di: summary.toStampDi, noiBo: summary.toStampNoiBo }) : t('documents.home.toStampNone')) : undefined}
@@ -131,7 +134,7 @@ export function DocumentsHomeScreen() {
                 label={t('documents.home.overdue')}
                 value={summary?.overdue}
                 hint={summary ? (summary.overdue ? t('documents.home.overdueHint', { count: summary.worstOverdueDays }) : t('documents.home.overdueNone')) : undefined}
-                hintDanger={!!summary?.overdue}
+                hintTone={summary?.overdue ? 'danger' : undefined}
                 onPress={() => router.push({ pathname: '/documents/tasks', params: { tab: 'qua_han' } })}
               />
             </View>
@@ -222,56 +225,5 @@ function LinkRow({ icon, label, hint, badge, onPress, testID }: LinkRowProps) {
       {badge ? <CountBadge count={badge} /> : null}
       <Icon icon={ChevronRightIcon} size={18} color="subtle" />
     </Pressable>
-  );
-}
-
-type StatTileProps = {
-  icon: AppIcon;
-  /** Each counter keeps its own color: to handle blue, unread amber, to stamp violet (the Văn thư color), overdue red. */
-  tone: Exclude<Tone, 'off'> | 'document';
-  label: string;
-  value?: number;
-  hint?: string;
-  hintDanger?: boolean;
-  onPress: () => void;
-  testID?: string;
-};
-
-/**
- * One of the four counters: a tinted disc in the top-right corner (echoing the header circles) holding the icon,
- * the label, the count in the tone's color with a › disc saying it opens a list, and a one-line breakdown.
- */
-function StatTile({ icon, tone, label, value, hint, hintDanger, onPress, testID }: StatTileProps) {
-  const { colors } = useTheme();
-  const toneColor = useToneColors(tone === 'document' ? 'wait' : tone);
-  const color = tone === 'document' ? { tint: colors['document-tint'], solid: colors.document } : toneColor;
-  return (
-    <PressableCard testID={testID} accessibilityLabel={`${label}: ${value ?? ''}. ${hint ?? ''}`} onPress={onPress} className="min-h-[118px] flex-1 justify-between gap-2 p-3.5">
-      <View pointerEvents="none" style={{ position: 'absolute', width: 92, height: 92, borderRadius: 46, right: -26, top: -26, backgroundColor: color.tint }} />
-      <View className="flex-row items-start gap-2">
-        <Text weight="semibold" numberOfLines={2} className="flex-1 text-ink-2" style={{ fontSize: 13, lineHeight: 17 }}>
-          {label}
-        </Text>
-        <View className="h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: colors.elevated }}>
-          <Icon icon={icon} size={16} rawColor={color.solid} />
-        </View>
-      </View>
-      <View className="gap-0.5">
-        <View className="flex-row items-center justify-between gap-2">
-          <Text mono weight="bold" maxFontSizeMultiplier={1.2} style={{ fontSize: 30, lineHeight: 34, letterSpacing: -0.5, color: color.solid }}>
-            {value === undefined ? '–' : String(value)}
-          </Text>
-          {/* Tells the tile opens a list. */}
-          <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: color.tint }}>
-            <Icon icon={ChevronRightIcon} size={16} weight="bold" rawColor={color.solid} />
-          </View>
-        </View>
-        {hint ? (
-          <Text numberOfLines={1} className={hintDanger ? 'text-danger' : 'text-muted'} style={{ fontSize: 12, lineHeight: 16 }}>
-            {hint}
-          </Text>
-        ) : null}
-      </View>
-    </PressableCard>
   );
 }

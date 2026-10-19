@@ -5,13 +5,11 @@ import { qk } from '@/core/query/keys';
 import { useCapabilities } from '@/core/session/capabilities';
 import { useSessionStore } from '@/core/session/sessionStore';
 import { sameId } from '@/core/session/userTypes';
-import { addDays, atMinutes, formatKey, minutesOfDay, todayKey, type DateKey } from '@/core/time/vn';
+import { addDays, atMinutes, formatKey, minutesOfDay, todayKey } from '@/core/time/vn';
 import { useDocumentSummary } from '@/features/official-document/hooks/useDocumentSummary';
-import { parcelsApi } from '@/features/parcel/api/parcel.api';
+import { useDueParcels } from '@/features/parcel/hooks/useDueParcels';
 import { useMyParcelStats } from '@/features/parcel/hooks/useMyParcelStats';
 import { useReceptionStats } from '@/features/parcel/hooks/useReceptionStats';
-import { ParcelStatus } from '@/features/parcel/types';
-import { parcelDeadline } from '@/features/parcel/utils/parcel';
 import { bookingsApi } from '@/features/room-booking/api/booking.api';
 import { useDefaultAreaId } from '@/features/room-booking/hooks/useDefaultAreaId';
 import { useRooms } from '@/features/room-booking/hooks/useRooms';
@@ -103,20 +101,6 @@ export function useFreeRoomsSummary(): Signal<string> {
 export function useWaitingParcels(): Signal<number> {
   const stats = useMyParcelStats();
   return { data: stats.data ? stats.data.waiting + stats.data.overdue : undefined, isLoading: stats.isLoading };
-}
-
-/** My parcels in the Due state (day 6), for "N đến hạn dd/MM". */
-export function useDueParcels(enabled = true) {
-  const connected = useSessionStore((s) => s.connected.parcel);
-  return useQuery({
-    queryKey: qk.parcels.my({ statuses: [ParcelStatus.Due], scope: 'home-due' }),
-    queryFn: () => parcelsApi.my({ pageNumber: 1, pageSize: 50, statuses: [ParcelStatus.Due] }),
-    enabled: connected && enabled,
-    select: (page) => {
-      const due = page.items.map((p) => parcelDeadline(p)?.dueKey).filter((key): key is DateKey => !!key).sort();
-      return { count: page.items.length, firstDueKey: due[0] ?? null };
-    },
-  });
 }
 
 /** "2 chờ · 1 quá hạn" or "2 chờ · 1 đến hạn". `waiting` already includes the Due ones. */

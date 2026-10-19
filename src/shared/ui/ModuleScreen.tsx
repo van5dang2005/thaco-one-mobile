@@ -9,6 +9,9 @@ import { shadows } from './shadows';
 /** Padding and gap of the scrolling content (v3: 12 top, 16 sides, cards 12 apart). */
 export const CONTENT_PADDING = { horizontal: 16, top: 12, bottom: 24, gap: 12 } as const;
 
+/** How far an `overlap` screen's content reaches up over the bottom of the header. */
+export const OVERLAP = 26;
+
 type Props = {
   /** A `ModuleHeader`. */
   header: ReactNode;
@@ -34,8 +37,9 @@ type Props = {
    */
   floatingScrolls?: boolean;
   /**
-   * The first content card overlaps the header (lists whose cards start on the blue, 6f / 6g): a 26pt
-   * blue band sits behind the top of the scroll content, so pass the header a smaller `bottom` (18).
+   * The first content cards overlap the header's picture (Văn thư, Bưu phẩm homes: `HeaderScene`): the scroll view
+   * reaches `OVERLAP` up into the header, so its picture runs on behind the top of the cards. Pass the header
+   * `bottom` = the gap under its content + `OVERLAP`.
    */
   overlap?: boolean;
   testID?: string;
@@ -81,24 +85,23 @@ export function ModuleScreen({ header, floating, children, footer, footerNote, b
     <KeyboardAvoidingView testID={testID} behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1" style={{ backgroundColor: bg }}>
       {header}
       {floating ? <View style={{ zIndex: 1 }}>{floating}</View> : null}
-      <View className="flex-1">
+      <View className="flex-1" style={overlap ? { marginTop: -OVERLAP } : undefined}>
         {scroll ? (
           <ScrollView
             ref={scrollRef}
             keyboardShouldPersistTaps="handled"
-            // Overlap: as with `floatingScrolls`, the scroll view itself is header blue so pulling down stretches
-            // the band (light spinner) instead of dragging it away from the header; the content keeps the canvas.
-            refreshControl={overlap && isValidElement(refreshControl) ? cloneElement(refreshControl, { tintColor: colors['header-name'] }) : refreshControl}
-            style={overlap ? { backgroundColor: colors.header } : undefined}
+            refreshControl={refreshControl}
+            // Overlap: the scroll view and the top of its content are clear, so the header's picture shows behind the
+            // cards' top; its street fades into the canvas, so pulling down just opens canvas under the picture.
             contentContainerStyle={{
               paddingHorizontal: CONTENT_PADDING.horizontal,
               paddingTop: overlap ? 0 : CONTENT_PADDING.top,
               paddingBottom: CONTENT_PADDING.bottom,
               gap: CONTENT_PADDING.gap,
-              ...(overlap ? { flexGrow: 1, backgroundColor: bg } : null),
+              ...(overlap ? { flexGrow: 1 } : null),
             }}
           >
-            {overlap ? <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 26, backgroundColor: colors.header }} /> : null}
+            {overlap ? <View pointerEvents="none" style={{ position: 'absolute', top: OVERLAP, left: 0, right: 0, bottom: 0, backgroundColor: bg }} /> : null}
             {children}
             {overlap ? <View pointerEvents="none" style={{ position: 'absolute', top: '100%', left: 0, right: 0, height: 800, backgroundColor: bg }} /> : null}
           </ScrollView>

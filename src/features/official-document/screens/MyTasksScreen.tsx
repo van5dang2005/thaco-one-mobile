@@ -12,7 +12,7 @@ import { SectionTitle } from '@/shared/ui/SectionTitle';
 import { ListSkeleton } from '@/shared/ui/Skeleton';
 import { EmptyState, ErrorState } from '@/shared/ui/StateViews';
 
-import { HeaderChips } from '../components/HeaderChips';
+import { HeaderChips } from '@/shared/ui/HeaderChips';
 import { TaskCard } from '../components/TaskCard';
 import { TaskWeekCard } from '../components/TaskWeekCard';
 import { useIncomingDocs } from '../hooks/useIncomingDocs';

@@ -1,123 +1,90 @@
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { sameId } from '@/core/session/userTypes';
-import type { ColorToken } from '@/core/theme/palette';
-import { formatDayMonth, formatKey, formatTime, parseServerDate } from '@/core/time/vn';
+import { formatDayMonth, parseServerDate } from '@/core/time/vn';
+import { cn } from '@/shared/lib/cn';
 import { PressableCard } from '@/shared/ui/Card';
-import { Icon } from '@/shared/ui/Icon';
-import { type AppIcon, CalendarOffIcon, CircleCheckIcon, PackageIcon } from '@/shared/ui/icons';
-import { ProgressBar } from '@/shared/ui/ProgressBar';
-import { RoundIcon, type RoundIconTone } from '@/shared/ui/RoundIcon';
+import { UserCheckIcon } from '@/shared/ui/icons';
+import type { RoundIconTone } from '@/shared/ui/RoundIcon';
 import { parcelBadgeKind } from '@/shared/ui/status';
-import { StatusBadge } from '@/shared/ui/StatusBadge';
+import { ParcelBadge, Tag } from '@/shared/ui/StatusBadge';
 import { Text } from '@/shared/ui/Text';
-import { useToneColors, type Tone } from '@/shared/ui/tones';
 
-import { ParcelStatus, type ParcelLookupDto } from '../types';
-import { isOpenParcel, parcelDeadline, senderTitle } from '../utils/parcel';
-import { daysLeftLabel } from './DeadlineBars';
+import { LookupMatchReason, ParcelStatus, type ParcelLookupDto } from '../types';
+import { isOpenParcel, senderTitle, splitTracking } from '../utils/parcel';
+import { ParcelDeadlineTag } from './ParcelDeadlineTag';
 
 /** Package icon tone follows the status badge (wait / warn / danger / ok / off). */
 export const parcelIconTone = (status: ParcelStatus): RoundIconTone => parcelBadgeKind(status) as RoundIconTone;
 
 type Props = { parcel: ParcelLookupDto; myCode?: string | null; onPress: () => void };
 
+/** Second line of a row: the description, else the sender's name when the title shows the company. */
+export function parcelSubline(p: Pick<ParcelLookupDto, 'description' | 'senderCompanyName' | 'senderFullName'>) {
+  if (p.description) return p.description;
+  return p.senderCompanyName && p.senderCompanyName !== p.senderFullName ? p.senderFullName : null;
+}
+
+/** I collect this parcel for its receiver (a detailed or default delegation matched it). */
+export const isOnBehalf = (p: Pick<ParcelLookupDto, 'matchReason'>) =>
+  p.matchReason === LookupMatchReason.DetailedDelegation || p.matchReason === LookupMatchReason.DefaultDelegation;
+
 /**
- * Card of "Bưu phẩm của tôi" (6d): icon in the status tone, sender, tracking code and description, a
- * pill with what matters now ("Còn 7 ngày", "Quá hạn 2 ngày", "Đã nhận", "Đã hủy"), then the timeline
- * row (received → due, with a bar), who collected it, or when it was dropped.
+ * Row of "Bưu phẩm của tôi" (6d), laid out like a văn thư row: the carrier code (mono, bold) with the
+ * parcel code and the received date, the sender on up to two lines, the description, then the status,
+ * "Nhận thay …" when I collect it for someone, and the deadline or hand-over time.
  */
-export function ParcelCard({ parcel, myCode, onPress }: Props) {
+export function ParcelCard({ parcel: p, myCode, onPress }: Props) {
   const { t } = useTranslation();
-  const deadline = parcelDeadline(parcel);
-  const open = isOpenParcel(parcel.status);
-  const kind = parcelBadgeKind(parcel.status);
-  const handOverAt = parseServerDate(parcel.handOverAt);
-  const meta = { fontSize: 12, lineHeight: 17 };
-  const collector = sameId(parcel.actualReceiverCode, myCode) ? t('parcels.handedYouDirect') : t('parcels.handedBy', { code: parcel.actualReceiverCode ?? '' });
-  const pill =
-    open && deadline
-      ? daysLeftLabel(t, deadline)
-      : parcel.status === ParcelStatus.HandedOver
-        ? t('parcels.badgeReceived')
-        : t(`status.parcelShort.${String(parcel.status) as '4'}`);
+  const open = isOpenParcel(p.status);
+  const cancelled = p.status === ParcelStatus.Cancelled;
+  const received = parseServerDate(p.receivedAt ?? p.createdAt);
+  const subline = parcelSubline(p);
+  // Who collected it, only when that was not the receiver: me (collecting on their behalf) or someone else.
+  const collector =
+    !p.actualReceiverCode || sameId(p.actualReceiverCode, p.receiverCode)
+      ? undefined
+      : sameId(p.actualReceiverCode, myCode)
+        ? t('parcels.collectedByYou')
+        : t('parcels.collectedBy', { code: p.actualReceiverCode });
 
   return (
-    <PressableCard testID={`parcel-${parcel.trackingNumber}`} onPress={onPress} className="gap-3 p-3.5" style={{ flexShrink: 0 }}>
-      <View className="flex-row gap-3">
-        <RoundIcon icon={PackageIcon} size={44} square tone={parcelIconTone(parcel.status)} />
-        <View className="min-w-0 flex-1 justify-center gap-0.5">
-          <View className="flex-row items-start gap-2">
-            <Text weight="bold" numberOfLines={1} className="min-w-0 flex-1" style={{ fontSize: 14.5, lineHeight: 20 }}>
-              {senderTitle(parcel)}
-            </Text>
-            <StatusBadge kind={kind} label={pill} dot />
-          </View>
-          <Text mono numberOfLines={1} className="text-muted" style={{ fontSize: 11.5, lineHeight: 15 }}>
-            {parcel.trackingNumber}
+    <PressableCard
+      testID={`parcel-${p.trackingNumber}`}
+      accessibilityLabel={`${p.trackingNumber}, ${senderTitle(p)}`}
+      onPress={onPress}
+      className="gap-2 p-3.5"
+      style={{ flexShrink: 0 }}
+    >
+      <View className="flex-row items-center gap-2">
+        <Text mono weight="bold" numberOfLines={1} className={cn('flex-shrink', cancelled && 'text-muted')} style={{ fontSize: 14, lineHeight: 18 }}>
+          {splitTracking(p.trackingNumber).code}
+        </Text>
+        <Text mono numberOfLines={1} className="flex-1 text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+          {p.transactionCode}
+        </Text>
+        {received ? (
+          <Text mono className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+            {formatDayMonth(received)}
           </Text>
-          {parcel.description ? (
-            <Text numberOfLines={1} className="text-subtle" style={meta}>
-              {parcel.description}
-            </Text>
-          ) : null}
-        </View>
+        ) : null}
       </View>
 
-      {open && deadline ? <Timeline parcel={parcel} /> : null}
-
-      {parcel.status === ParcelStatus.HandedOver && handOverAt ? (
-        <FooterLine icon={CircleCheckIcon} color="success">
-          {`${t('parcels.handedPrefix')} `}
-          <Text mono weight="bold" className="text-ink" style={meta}>{`${formatTime(handOverAt)} · ${formatDayMonth(handOverAt)}`}</Text>
-          {parcel.actualReceiverCode ? ` · ${collector}` : ''}
-        </FooterLine>
-      ) : null}
-
-      {parcel.status === ParcelStatus.Cancelled && deadline ? (
-        <FooterLine icon={CalendarOffIcon} color="subtle">
-          {t('parcels.cancelledAuto', { date: formatKey(deadline.cancelKey, false) })}
-        </FooterLine>
-      ) : null}
-    </PressableCard>
-  );
-}
-
-/** Open parcels: "Tiếp nhận 09:12 · 14/10" on the left, the due (or auto-cancel) date on the right, a 4pt bar under. */
-function Timeline({ parcel }: { parcel: ParcelLookupDto }) {
-  const { t } = useTranslation();
-  const deadline = parcelDeadline(parcel)!;
-  const tone = useToneColors(parcelBadgeKind(parcel.status) as Tone);
-  const received = parseServerDate(parcel.receivedAt ?? parcel.createdAt);
-  const overdue = parcel.status === ParcelStatus.Overdue;
-  const small = { fontSize: 11.5, lineHeight: 15 };
-  return (
-    <View className="gap-2 border-t border-line-2 pt-2.5">
-      <View className="flex-row items-center justify-between gap-2">
-        <Text numberOfLines={1} className="flex-shrink text-muted" style={small}>
-          {received ? t('parcels.receivedAt', { time: formatTime(received), date: formatDayMonth(received) }) : ''}
-        </Text>
-        <Text weight="semibold" numberOfLines={1} style={{ ...small, color: overdue ? tone.text : undefined }} className={overdue ? undefined : 'text-ink-2'}>
-          {overdue ? t('parcels.autoCancel', { date: formatKey(deadline.cancelKey, false) }) : t('parcels.dueOn', { date: formatKey(deadline.dueKey, false) })}
-        </Text>
-      </View>
-      <ProgressBar value={deadline.dueProgress} color={tone.solid} track={tone.tint} height={4} />
-    </View>
-  );
-}
-
-/** Hairline, then a glyph and one or two lines of muted text (received / cancelled cards). */
-function FooterLine({ icon, color, children }: { icon: AppIcon; color: ColorToken; children: ReactNode }) {
-  return (
-    <View className="flex-row items-start gap-2 border-t border-line-2 pt-2.5">
-      <View style={{ paddingTop: 1 }}>
-        <Icon icon={icon} size={15} weight="bold" color={color} />
-      </View>
-      <Text numberOfLines={2} className="min-w-0 flex-1 text-muted" style={{ fontSize: 12, lineHeight: 17 }}>
-        {children}
+      <Text weight={open ? 'bold' : 'semibold'} numberOfLines={2} className={cancelled ? 'text-muted' : undefined} style={{ fontSize: 14, lineHeight: 20 }}>
+        {senderTitle(p)}
       </Text>
-    </View>
+      {subline ? (
+        <Text numberOfLines={1} className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+          {subline}
+        </Text>
+      ) : null}
+
+      <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1.5">
+        <ParcelBadge status={p.status} short />
+        {isOnBehalf(p) ? <Tag icon={UserCheckIcon} label={t('parcels.collectFor', { name: p.receiverFullName })} /> : null}
+        <ParcelDeadlineTag parcel={p} collector={collector} />
+      </View>
+    </PressableCard>
   );
 }

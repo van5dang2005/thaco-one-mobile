@@ -36,6 +36,8 @@ type Props = {
   children?: ReactNode;
   /** Padding under the content: 44 when a FloatingCard overlaps the header (default), less otherwise. */
   bottom?: number;
+  /** A picture behind the header in place of the two faint circles (Văn thư, Bưu phẩm: `HeaderScene`). */
+  art?: ReactNode;
   testID?: string;
 };
 
@@ -43,7 +45,7 @@ type Props = {
  * Blue module header (v3): safe area + 10 on top, 16 sides, two faint white circles on the right,
  * a 40pt toolbar (back · title + subtitle · actions) and the screen's own content below it.
  */
-export function ModuleHeader({ title, icon, subtitle, subtitleMono, subtitleIcon, onSubtitlePress, leading = 'back', onBack, right, titleSize = 'md', children, bottom = 44, testID }: Props) {
+export function ModuleHeader({ title, icon, subtitle, subtitleMono, subtitleIcon, onSubtitlePress, leading = 'back', onBack, right, titleSize = 'md', children, bottom = 44, art, testID }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { bg, fg, text2: sub } = useHeaderColors();
@@ -82,7 +84,7 @@ export function ModuleHeader({ title, icon, subtitle, subtitleMono, subtitleIcon
 
   return (
     <View testID={testID} className="overflow-hidden" style={{ backgroundColor: bg, paddingTop: insets.top + 10, paddingHorizontal: 16, paddingBottom: bottom }}>
-      <HeaderCircles />
+      {art ?? <HeaderCircles />}
       <View className="min-h-10 flex-row items-center gap-3">
         {leading === 'none' ? null : (
           <HeaderIconButton

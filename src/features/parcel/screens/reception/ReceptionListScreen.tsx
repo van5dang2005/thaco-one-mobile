@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 
 import { DEFAULT_PAGE_SIZE, flattenPages, nextPageParam } from '@/core/api/types';
 import { qk } from '@/core/query/keys';
@@ -10,15 +10,13 @@ import { useCapabilities } from '@/core/session/capabilities';
 import { useSessionStore } from '@/core/session/sessionStore';
 import { useDebounced } from '@/shared/hooks/useDebounced';
 import { Button } from '@/shared/ui/Button';
-import { FilterChip } from '@/shared/ui/Chip';
-import { FloatingCard } from '@/shared/ui/Card';
 import { HeaderIconButton } from '@/shared/ui/HeaderBar';
-import { BuildingIcon, CheckCheckIcon, HourglassIcon, InboxIcon, LockIcon, PackageIcon, PlusIcon, SearchIcon, TriangleAlertIcon } from '@/shared/ui/icons';
+import { HeaderChips } from '@/shared/ui/HeaderChips';
+import { BuildingIcon, CalendarDaysIcon, InboxIcon, LockIcon, PackageIcon, PlusIcon, SearchIcon } from '@/shared/ui/icons';
 import { ModuleHeader } from '@/shared/ui/ModuleHeader';
 import { CONTENT_PADDING, ModuleScreen } from '@/shared/ui/ModuleScreen';
 import { SelectSheet } from '@/shared/ui/SelectSheet';
 import { ListSkeleton } from '@/shared/ui/Skeleton';
-import { StatStrip } from '@/shared/ui/StatStrip';
 import { EmptyState, ErrorState } from '@/shared/ui/StateViews';
 import { Text } from '@/shared/ui/Text';
 import { TextField } from '@/shared/ui/TextField';
@@ -33,6 +31,8 @@ import { isOpenParcel, rangeFromDate, type ReceptionRange } from '../../utils/pa
 
 const statusChips = [ParcelStatus.Waiting, ParcelStatus.Due, ParcelStatus.Overdue, ParcelStatus.HandedOver, ParcelStatus.Cancelled] as const;
 
+type StatusChip = 'all' | `${(typeof statusChips)[number]}`;
+
 const rangeLabels = {
   all: 'reception.rangeAll',
   today: 'reception.rangeToday',
@@ -40,7 +40,11 @@ const rangeLabels = {
   month: 'reception.rangeMonth',
 } as const;
 
-/** Reception desk: parcels of the units I am granted, filters, multi-select → bulk handover. */
+/**
+ * Reception desk, laid out like the văn thư lists: the unit picker under the title, the date range and
+ * "Tiếp nhận" on the right, status chips with their counts on the header, a search field, then the rows;
+ * ticking open parcels brings up the bulk handover bar.
+ */
 export function ReceptionListScreen() {
   const { t } = useTranslation();
   const connected = useSessionStore((s) => s.connected.parcel);
@@ -87,6 +91,14 @@ export function ReceptionListScreen() {
     );
   }
 
+  // The stats count Chờ tiếp nhận and Đến hạn together, so those two chips go without a count.
+  const counts: Partial<Record<StatusChip, number>> = {
+    all: stats.data?.total,
+    [String(ParcelStatus.Overdue)]: stats.data?.overdue,
+    [String(ParcelStatus.HandedOver)]: stats.data?.handedOver,
+    [String(ParcelStatus.Cancelled)]: stats.data?.cancelled,
+  };
+
   const create = () => router.push('/parcels/reception/new');
   const header = (
     <ModuleHeader
@@ -96,28 +108,29 @@ export function ReceptionListScreen() {
       subtitle={department ? (department.name ?? department.code ?? undefined) : t('reception.allDepartments')}
       onSubtitlePress={() => setPicker('department')}
       subtitleIcon={BuildingIcon}
-      right={<HeaderIconButton testID="reception-create" variant="solid" icon={PlusIcon} label={t('reception.create')} onPress={create} />}
-    />
-  );
-
-  const floating = (
-    <FloatingCard>
-      <StatStrip
-        testID="reception-stats"
-        items={[
-          { key: 'total', icon: PackageIcon, tone: 'wait', value: stats.data?.total ?? '–', label: t('reception.statTotal') },
-          { key: 'waiting', icon: HourglassIcon, tone: 'warn', value: stats.data?.waiting ?? '–', label: t('reception.statWaiting') },
-          { key: 'overdue', icon: TriangleAlertIcon, tone: 'danger', value: stats.data?.overdue ?? '–', label: t('reception.statOverdue'), emphasize: !!stats.data?.overdue },
-          { key: 'handed', icon: CheckCheckIcon, tone: 'ok', value: stats.data?.handedOver ?? '–', label: t('reception.statHanded') },
+      right={
+        <>
+          <HeaderIconButton testID="reception-range" icon={CalendarDaysIcon} label={t('reception.rangeTitle')} badge={range === 'all' ? undefined : 1} onPress={() => setPicker('range')} />
+          <HeaderIconButton testID="reception-create" variant="solid" icon={PlusIcon} label={t('reception.create')} onPress={create} />
+        </>
+      }
+      bottom={18}
+    >
+      <HeaderChips<StatusChip>
+        testID="reception-status"
+        options={[
+          { value: 'all', label: t('reception.allStatuses'), count: counts.all, testID: 'reception-status-all' },
+          ...statusChips.map((s) => ({ value: String(s) as StatusChip, label: t(`status.parcel.${s}`), count: counts[String(s) as StatusChip], testID: `reception-status-${s}` })),
         ]}
+        value={status === undefined ? 'all' : (String(status) as StatusChip)}
+        onChange={(value) => changeFilter(() => setStatus(value === 'all' ? undefined : (Number(value) as ParcelStatus)))}
       />
-    </FloatingCard>
+    </ModuleHeader>
   );
 
   return (
     <ModuleScreen
       header={header}
-      floating={floating}
       scroll={false}
       overlay={
         selected.length ? (
@@ -137,28 +150,18 @@ export function ReceptionListScreen() {
         ) : null
       }
     >
-      <View className="gap-2.5 pb-1 pt-3">
-        <View className="px-4">
-          <TextField
-            testID="reception-search"
-            filled
-            leftIcon={SearchIcon}
-            value={search}
-            onChangeText={setSearch}
-            placeholder={t('reception.searchPlaceholder')}
-            returnKeyType="search"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onEndEditing={() => setPicked([])}
-          />
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-grow-0" contentContainerClassName="gap-2 px-4">
-          <FilterChip testID="reception-status-all" selected={status === undefined} label={t('reception.allStatuses')} onPress={() => changeFilter(() => setStatus(undefined))} />
-          {statusChips.map((s) => (
-            <FilterChip key={s} testID={`reception-status-${s}`} selected={status === s} label={t(`status.parcel.${s}`)} onPress={() => changeFilter(() => setStatus(s))} />
-          ))}
-          <FilterChip testID="reception-range" dropdown selected={range !== 'all'} label={t(rangeLabels[range])} onPress={() => setPicker('range')} />
-        </ScrollView>
+      <View className="px-4 pb-1 pt-3">
+        <TextField
+          testID="reception-search"
+          leftIcon={SearchIcon}
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t('reception.searchPlaceholder')}
+          returnKeyType="search"
+          autoCapitalize="none"
+          autoCorrect={false}
+          onEndEditing={() => setPicked([])}
+        />
       </View>
 
       {query.isLoading || capsLoading ? (
@@ -171,6 +174,7 @@ export function ReceptionListScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingHorizontal: CONTENT_PADDING.horizontal, paddingTop: 12, paddingBottom: selected.length ? 110 : CONTENT_PADDING.bottom, gap: CONTENT_PADDING.gap }}
           renderItem={({ item }) => (
             <ReceptionParcelCard
@@ -180,15 +184,17 @@ export function ReceptionListScreen() {
               onPress={() => router.push({ pathname: '/parcels/[id]', params: { id: item.id } })}
             />
           )}
-          refreshControl={
-            <RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />
-          }
+          refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />}
           onEndReachedThreshold={0.4}
           onEndReached={() => {
             if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
           }}
           ListEmptyComponent={
-            <EmptyState icon={PackageIcon} message={t('reception.empty')} actionLabel={t('reception.create')} onAction={create} />
+            keyword || status !== undefined || range !== 'all' ? (
+              <EmptyState icon={SearchIcon} message={t('reception.empty')} />
+            ) : (
+              <EmptyState icon={PackageIcon} message={t('reception.empty')} actionLabel={t('reception.create')} onAction={create} />
+            )
           }
           ListFooterComponent={query.isFetchingNextPage ? <Text className="py-4 text-center text-meta text-muted">{t('common.loadMore')}</Text> : null}
         />
