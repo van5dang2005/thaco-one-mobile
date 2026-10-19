@@ -3,7 +3,6 @@ import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
 import { formatKey, todayKey, weekdayOf } from '@/core/time/vn';
@@ -18,7 +17,7 @@ import { Text } from '@/shared/ui/Text';
 import { type Tone, useToneColors } from '@/shared/ui/tones';
 
 import { GlassCard } from '../components/GlassCard';
-import { GuestPage } from '../components/GuestPage';
+import { GuestPage, guestPageColors } from '../components/GuestPage';
 import { GuestScene, useGuestScene } from '../components/GuestScene';
 import { GuestTopBar } from '../components/GuestTopBar';
 import { VisitCard } from '../components/VisitCard';
@@ -28,14 +27,14 @@ import { byStart, visitStage } from '../utils/dashboard';
 
 /** Visits shown here; "Xem tất cả" opens the day's full list. */
 const PREVIEW = 3;
-/** A counter card at the default text size: 14 padding, 36 icon, 10 gap, 29 figure, 17 label, 14 padding. */
+/** The counter strip at the default text size: 14 padding, 36 icon, 10 gap, 29 figure, 17 label, 14 padding. */
 const STATS_HEIGHT = 120;
 /** Height of the toolbar (`GuestTopBar`). */
 const TOOLBAR_HEIGHT = 150;
 /** Least picture kept above and below the counters. */
 const STATS_GAP = 20;
-/** How far the panel's rounded top reaches up over the picture (its corner radius). */
-const PANEL_OVERLAP = 28;
+/** Extra picture kept above the counters, so the gate and the minibus driving in show whole over them. */
+const STATS_SHIFT = 14;
 
 /** The `PREVIEW` visits around now: from the first one not yet gone, topped up with earlier ones near the day's end. */
 function previewOf(visits: GuestScheduleItem[]) {
@@ -45,9 +44,9 @@ function previewOf(visits: GuestScheduleItem[]) {
 }
 
 /**
- * "Lịch khách": the title and date on the office picture with three KPI cards centred on it, the visits around now on a coloured
- * panel under it ("Xem tất cả" opens the day's list), and "Quét mã QR" floating at the bottom, all over the guest
- * screens' full-page background.
+ * "Lịch khách": the title and date on the picture of the plant's gate, with a square strip of three counters centred on
+ * it, the visits around now on a grey panel with a straight top edge under it ("Xem tất cả" opens the day's list), and
+ * "Quét mã QR" floating at the bottom.
  */
 export function GuestDashboardScreen() {
   const { t } = useTranslation();
@@ -62,9 +61,9 @@ export function GuestDashboardScreen() {
 
   const visits = [...(data?.today ?? [])].sort(byStart);
   const bottomEdge = Math.max(insets.bottom, 12);
-  // The picture shown from the toolbar's top down to the panel: the drawing, made taller with ground if the counters need it.
-  const picture = Math.max(scene.height - scene.lift - PANEL_OVERLAP, TOOLBAR_HEIGHT + statsHeight + STATS_GAP * 2);
-  const statsTop = TOOLBAR_HEIGHT + (picture - TOOLBAR_HEIGHT - statsHeight) / 2;
+  // The picture shown from the toolbar's top down to the panel: the drawing, made taller with yard if the counters need it.
+  const picture = Math.max(scene.height - scene.lift, TOOLBAR_HEIGHT + STATS_SHIFT + statsHeight + STATS_GAP * 2);
+  const statsTop = TOOLBAR_HEIGHT + STATS_SHIFT + (picture - TOOLBAR_HEIGHT - STATS_SHIFT - statsHeight) / 2;
 
   return (
     <GuestPage testID="guests-dashboard">
@@ -73,7 +72,7 @@ export function GuestDashboardScreen() {
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />}
       >
         {/* The picture, edge to edge: the toolbar on it and the counters pinned in the middle of what is left under it. */}
-        <View className="-mx-4 px-4" style={{ minHeight: picture + PANEL_OVERLAP }}>
+        <View className="-mx-4 px-4" style={{ minHeight: picture }}>
           <GuestScene />
           <GuestTopBar
             testID="guests-top"
@@ -81,15 +80,14 @@ export function GuestDashboardScreen() {
             title={t('guestSchedule.dashboard.title')}
             subtitle={t('guestSchedule.dashboard.date', { weekday: t(`time.weekday.${String(weekdayOf(today)) as '0'}`), date: formatKey(today) })}
           />
-          <View
-            testID="guests-stats"
-            onLayout={(e) => setStatsHeight(e.nativeEvent.layout.height)}
-            className="absolute left-4 right-4 flex-row gap-2.5"
-            style={{ top: statsTop }}
-          >
-            <KpiCard tone="wait" icon={UsersIcon} label={t('guestSchedule.dashboard.statTotal')} value={data?.stats.total} />
-            <KpiCard tone="warn" icon={HourglassIcon} label={t('guestSchedule.dashboard.statPending')} value={data?.stats.pending} />
-            <KpiCard tone="ok" icon={CircleCheckIcon} label={t('guestSchedule.dashboard.statConfirmed')} value={data?.stats.confirmed} />
+          <View testID="guests-stats" onLayout={(e) => setStatsHeight(e.nativeEvent.layout.height)} className="absolute left-4 right-4" style={{ top: statsTop }}>
+            <GlassCard style={{ flexDirection: 'row' }}>
+              <KpiCell tone="wait" icon={UsersIcon} label={t('guestSchedule.dashboard.statTotal')} value={data?.stats.total} />
+              <StatRule />
+              <KpiCell tone="warn" icon={HourglassIcon} label={t('guestSchedule.dashboard.statPending')} value={data?.stats.pending} />
+              <StatRule />
+              <KpiCell tone="ok" icon={CircleCheckIcon} label={t('guestSchedule.dashboard.statConfirmed')} value={data?.stats.confirmed} />
+            </GlassCard>
           </View>
         </View>
 
@@ -97,9 +95,12 @@ export function GuestDashboardScreen() {
           bottom={bottomEdge + 84}
           header={
             <View className="flex-row items-center justify-between gap-3">
-              <Text weight="bold" accessibilityRole="header" className="text-ink" style={{ fontSize: 17, lineHeight: 23 }}>
-                {t('guestSchedule.dashboard.today')}
-              </Text>
+              <View className="min-w-0 flex-1 flex-row items-center gap-2.5">
+                <View className="h-[18px] w-1 rounded-full bg-primary" />
+                <Text weight="bold" accessibilityRole="header" numberOfLines={1} className="flex-shrink text-ink" style={{ fontSize: 17, lineHeight: 23 }}>
+                  {t('guestSchedule.dashboard.today')}
+                </Text>
+              </View>
               {visits.length ? (
                 <Pressable
                   testID="guests-see-all"
@@ -137,89 +138,55 @@ export function GuestDashboardScreen() {
       </ScrollView>
 
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 px-4" style={{ paddingBottom: bottomEdge }}>
-        <Button testID="guests-scan" icon={ScanQrCodeIcon} label={t('guestSchedule.dashboard.scan')} onPress={() => router.push('/guests/scan')} />
+        <Button
+          testID="guests-scan"
+          icon={ScanQrCodeIcon}
+          label={t('guestSchedule.dashboard.scan')}
+          onPress={() => router.push('/guests/scan')}
+        />
       </View>
     </GuestPage>
   );
 }
 
 /**
- * Colours of the "Lịch khách hôm nay" panel: one even colour under its heading; under the list a quiet wash from that
- * colour and two faint glows of the same blue (right, then bottom left).
- */
-const panelTones = {
-  light: {
-    base: '#DDE9F7',
-    wash: ['#DDE9F7', '#D6E4F5'],
-    glows: [
-      { color: '#5B9BE6', opacity: 0.14, cx: '90%', cy: '30%', r: 220 },
-      { color: '#5B9BE6', opacity: 0.12, cx: '10%', cy: '90%', r: 260 },
-    ],
-  },
-  dark: {
-    base: '#12294A',
-    wash: ['#12294A', '#0F2140'],
-    glows: [
-      { color: '#2A6DC4', opacity: 0.16, cx: '90%', cy: '30%', r: 220 },
-      { color: '#2A6DC4', opacity: 0.14, cx: '10%', cy: '90%', r: 260 },
-    ],
-  },
-};
-
-/**
- * The sheet holding the day's visits: rounded on top over the picture's last `PANEL_OVERLAP`, edge to edge, its heading
- * on the even colour and the list (`children`) on the wash, which runs down to the page's end.
+ * The panel holding the day's visits under the picture: square-topped and edge to edge in the page's grey, its heading,
+ * then the list (`children`), which runs down to the page's end.
  */
 function TodayPanel({ header, bottom, children }: { header: ReactNode; bottom: number; children: ReactNode }) {
-  const c = panelTones[useTheme().scheme];
+  const { scheme } = useTheme();
   return (
-    <View
-      testID="guests-today"
-      className="-mx-4 flex-grow overflow-hidden rounded-t-[28px]"
-      style={{ marginTop: -PANEL_OVERLAP, backgroundColor: c.base }}
-    >
+    <View testID="guests-today" className="-mx-4 flex-grow" style={{ backgroundColor: guestPageColors[scheme] }}>
       <View className="px-4 pb-3 pt-5">{header}</View>
       <View testID="guests-today-list" className="flex-grow px-4" style={{ paddingBottom: bottom }}>
-        <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Defs>
-            <LinearGradient id="todayWash" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={c.wash[0]} />
-              <Stop offset="1" stopColor={c.wash[1]} />
-            </LinearGradient>
-            {c.glows.map((g, i) => (
-              <RadialGradient key={i} id={`todayGlow${i}`}>
-                <Stop offset="0" stopColor={g.color} stopOpacity={g.opacity} />
-                <Stop offset="1" stopColor={g.color} stopOpacity={0} />
-              </RadialGradient>
-            ))}
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#todayWash)" />
-          {c.glows.map((g, i) => (
-            <Circle key={i} cx={g.cx} cy={g.cy} r={g.r} fill={`url(#todayGlow${i})`} />
-          ))}
-        </Svg>
         {children}
       </View>
     </View>
   );
 }
 
-/** A counter: glass drop over the picture, the icon in a tinted square, the figure, the label. */
-function KpiCard({ tone, icon, label, value }: { tone: Tone; icon: AppIcon; label: string; value?: number }) {
+/** A hairline between two counters of the strip. */
+function StatRule() {
+  const { scheme } = useTheme();
+  return <View style={{ width: StyleSheet.hairlineWidth, marginVertical: 14, backgroundColor: scheme === 'dark' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(15, 27, 45, 0.14)' }} />;
+}
+
+/** A counter of the strip: the icon in a tinted square, the figure, the label. */
+function KpiCell({ tone, icon, label, value }: { tone: Tone; icon: AppIcon; label: string; value?: number }) {
   const c = useToneColors(tone);
   return (
-    <GlassCard accessible accessibilityLabel={`${label}: ${value ?? ''}`} style={{ flex: 1, minWidth: 0, gap: 10, padding: 14 }}>
+    <View accessible accessibilityLabel={`${label}: ${value ?? ''}`} style={{ flex: 1, minWidth: 0, gap: 10, padding: 14 }}>
       <View className="h-9 w-9 items-center justify-center rounded-[10px]" style={{ backgroundColor: c.tint }}>
         <Icon icon={icon} size={18} rawColor={c.solid} weight="bold" />
       </View>
       <View>
-        <Text weight="bold" maxFontSizeMultiplier={1.2} className="text-ink" style={{ fontSize: 24, lineHeight: 29, letterSpacing: -0.4 }}>
+        <Text weight="bold" numeric maxFontSizeMultiplier={1.2} className="text-ink" style={{ fontSize: 24, lineHeight: 29, letterSpacing: -0.4 }}>
           {value === undefined ? '–' : String(value)}
         </Text>
         <Text numberOfLines={1} maxFontSizeMultiplier={1.2} className="text-muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
           {label}
         </Text>
       </View>
-    </GlassCard>
+    </View>
   );
 }

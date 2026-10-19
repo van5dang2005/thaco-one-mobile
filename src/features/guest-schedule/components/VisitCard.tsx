@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
+import type { ColorToken } from '@/core/theme/palette';
+import { useTheme } from '@/core/theme/ThemeProvider';
 import { formatTime } from '@/core/time/vn';
 import { Card } from '@/shared/ui/Card';
 import { Icon } from '@/shared/ui/Icon';
@@ -13,17 +15,21 @@ import type { GuestScheduleItem, GuestVisitStatus } from '../types';
 import { visitEnd, visitStart } from '../utils/dashboard';
 
 export const visitStatusKinds: Record<GuestVisitStatus, BadgeKind> = { pending: 'warn', confirmed: 'ok', checkedIn: 'live', checkedOut: 'off' };
+/** Colour of the card's left edge per status. */
+const edgeColors: Record<GuestVisitStatus, ColorToken> = { pending: 'warning', confirmed: 'success', checkedIn: 'success', checkedOut: 'subtle' };
 
-/** One visit: start over end time, a hairline, then the group, the company, the head count and the status. */
+/** One visit: the status edge, start over end time, a hairline, then the group, the company, the head count and the status. */
 export function VisitCard({ visit }: { visit: GuestScheduleItem }) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   return (
     <Card testID={`guests-visit-${visit.id}`} className="flex-row">
-      <View className="w-[70px] items-center justify-center border-r border-line-2 py-3.5">
-        <Text weight="bold" className="text-ink" style={{ fontSize: 15, lineHeight: 20 }}>
+      <View className="w-[3px]" style={{ backgroundColor: colors[edgeColors[visit.status]] }} />
+      <View className="w-[67px] items-center justify-center border-r border-line-2 py-3.5">
+        <Text weight="bold" numeric className="text-ink" style={{ fontSize: 15, lineHeight: 20 }}>
           {formatTime(visitStart(visit))}
         </Text>
-        <Text className="text-subtle" style={{ fontSize: 12.5, lineHeight: 17 }}>
+        <Text numeric className="text-subtle" style={{ fontSize: 12.5, lineHeight: 17 }}>
           {formatTime(visitEnd(visit))}
         </Text>
       </View>

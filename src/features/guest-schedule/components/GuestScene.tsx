@@ -1,149 +1,237 @@
 import { useWindowDimensions, View } from 'react-native';
-import Svg, { Circle, Defs, G, Path, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, Image as SvgImage, LinearGradient, Mask, Path, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
+import { images, WORDMARK_RATIO } from '@/shared/assets';
 
 /** Drawing box of the scene. It is drawn the screen's width wide (scaled as for at most `MAX_WIDTH`), keeping the ratio. */
 const VIEW_W = 390;
 const VIEW_H = 300;
 const MAX_WIDTH = 430;
+/** Where the sky's gradient ends, behind the buildings. */
+const HORIZON = 150;
 /** Where the buildings stand. */
-const GROUND = 192;
-/** Level with the top of the screen's toolbar: the tower's roof and beacon rise beside and above it. */
+const GROUND = 190;
+/** How far the sky goes on above the drawing (it tucks 2pt under the drawing's top, so no seam shows between them). */
+const SKY_ABOVE = 1200;
+/** Level with the top of the screen's toolbar: the crane and the sun rise beside and above it. */
 const TOOLBAR = 24;
 
-/** Day: brand-blue buildings in the sun, clouds, birds. Night: the same buildings dark with lit windows, moon and stars. */
+/** Day: white halls and the blue THACO sign in the sun. Night: the same plant dark with lit windows and a lit sign. */
 const palettes = {
   light: {
-    skyline: '#BED1E8',
-    skylineNear: '#A9C2E0',
-    block: '#8FB1D9',
-    blockShade: '#7A9FCC',
-    ribbon: '#EAF2FB',
-    ribbonLit: '#EAF2FB',
-    tower: '#2D6FB8',
-    towerSide: '#1E5492',
-    towerRoof: '#1A4A82',
-    towerAccent: '#5BA3EA',
-    window: '#C4DBF3',
-    windowOpacity: 0.42,
-    windowLit: '#FFFFFF',
-    windowLitOpacity: 0.75,
-    streakOpacity: 0.16,
-    podium: '#EEF4FA',
-    podiumRoof: '#C2D4E9',
+    sky: ['#A9CDF0', '#E4EFFA'],
+    ridge: '#C6D7EB',
+    box: '#D8453A',
+    crane: '#8FB1D9',
+    craneDark: '#7A9FCC',
+    beacon: '#E0574C',
+    backBlock: '#DCE6F2',
+    backRibbon: '#C2D5EB',
+    stack: '#EEF3F9',
+    stackBand: '#00539B',
+    wall: '#F5F8FC',
+    wallShade: '#E2EAF4',
+    saw: '#C7D6E8',
+    sawGlass: '#6E9AD0',
+    vault: '#4A86C8',
+    vaultShade: '#3A73B4',
+    band: '#00539B',
+    ribbon: '#BCD4EE',
+    door: '#C9D5E3',
+    doorLine: '#AEBED2',
+    fascia: '#00539B',
+    fasciaCap: '#003F78',
+    signGlow: 0,
     glass: '#3A78BE',
     glassOpacity: 1,
-    canopy: '#00539B',
-    booth: '#F7FAFD',
-    boothRoof: '#00539B',
-    boothWindow: '#9CC6EE',
+    windowLit: '#FFFFFF',
+    windowLitOpacity: 0.55,
+    canopy: '#003F78',
+    flagPole: '#8A97A8',
+    booth: '#2D6FB8',
+    boothShade: '#245C9A',
+    boothRoof: '#003F78',
+    boothWindow: '#D3E7FA',
     barrierPost: '#3A4A5E',
     barrierRed: '#D8453A',
     barrierWhite: '#FFFFFF',
+    lamp: '#3DBE7A',
+    fence: '#5E6E82',
+    fenceBase: '#C9D3DF',
+    pillar: '#EEF3F9',
+    pillarShade: '#D3DEEA',
+    pillarCap: '#00539B',
+    pillarLamp: '#FFF1C9',
+    road: '#BCCBDD',
+    roadLine: '#FFFFFF',
+    bus: '#E0574C',
+    busShade: '#B9433A',
+    busGlass: '#2F4A6B',
+    tailAmber: '#FFB347',
+    tailRed: '#FF5A4E',
+    plate: '#F5F5F0',
+    shadow: 0.14,
     tree: '#5BB894',
     treeShade: '#43A07E',
     trunk: '#7D6A55',
-    ground: '#C9D9EC',
-    groundLine: '#FFFFFF',
-    road: '#A9BFD8',
-    lane: '#FFFFFF',
-    laneOpacity: 0.85,
-    curb: '#E4ECF6',
     lawn: '#CDE7D9',
-    bush: '#7CC4A3',
-    car: '#E0574C',
-    carWindow: '#D7E9F8',
+    yard: '#D5E1EF',
+    cars: ['#FFFFFF', '#C3CCD7', '#D8453A', '#2D6FB8', '#3A4A5E', '#FFFFFF', '#9AA7B6'],
+    carGlass: '#8FB4DA',
     wheel: '#2A3646',
-    headlight: '#FFF1C9',
-    light: '#FFF1C9',
+    light: '#FFD66B',
+    sun: '#FFC23D',
+    sunCore: '#FFE08A',
     cloud: '#FFFFFF',
     bird: '#3A4A5E',
-    beacon: '#E0574C',
-    flagPole: '#8A97A8',
   },
   dark: {
-    skyline: '#172A43',
-    skylineNear: '#1B3150',
-    block: '#203D63',
-    blockShade: '#1A3354',
-    ribbon: '#2B4C76',
-    ribbonLit: '#FFD27A',
-    tower: '#1C426F',
-    towerSide: '#13304F',
-    towerRoof: '#102844',
-    towerAccent: '#2A6DC4',
-    window: '#3E679A',
-    windowOpacity: 0.5,
-    windowLit: '#FFD27A',
-    windowLitOpacity: 0.9,
-    streakOpacity: 0.05,
-    podium: '#1B3352',
-    podiumRoof: '#244369',
+    sky: ['#081426', '#1A3354'],
+    ridge: '#13253C',
+    box: '#7A3A36',
+    crane: '#2B4A72',
+    craneDark: '#223C5E',
+    beacon: '#FF6B5E',
+    backBlock: '#152A45',
+    backRibbon: '#C9A55E',
+    stack: '#1E3858',
+    stackBand: '#2A6DC4',
+    wall: '#1B3352',
+    wallShade: '#162B46',
+    saw: '#244369',
+    sawGlass: '#FFD27A',
+    vault: '#1C426F',
+    vaultShade: '#163659',
+    band: '#2A6DC4',
+    ribbon: '#FFD27A',
+    door: '#22395A',
+    doorLine: '#2D4A70',
+    fascia: '#0A5AA6',
+    fasciaCap: '#083F78',
+    signGlow: 0.35,
     glass: '#F2C46E',
     glassOpacity: 0.85,
+    windowLit: '#FFD27A',
+    windowLitOpacity: 0.9,
     canopy: '#2A6DC4',
-    booth: '#1E3858',
+    flagPole: '#5B6B80',
+    booth: '#1C426F',
+    boothShade: '#163659',
     boothRoof: '#2A6DC4',
     boothWindow: '#FFD27A',
     barrierPost: '#9FB0C4',
     barrierRed: '#E2574C',
     barrierWhite: '#DCE3EB',
+    lamp: '#5FE39A',
+    fence: '#7F93AC',
+    fenceBase: '#22395A',
+    pillar: '#284A72',
+    pillarShade: '#1E3A5C',
+    pillarCap: '#2A6DC4',
+    pillarLamp: '#FFD27A',
+    road: '#0A1422',
+    roadLine: '#5D7FA8',
+    bus: '#C9483E',
+    busShade: '#9E3A32',
+    busGlass: '#FFD27A',
+    tailAmber: '#FFC266',
+    tailRed: '#FF6B5E',
+    plate: '#DCE3EB',
+    shadow: 0.3,
     tree: '#1F5550',
     treeShade: '#17443F',
     trunk: '#3A3026',
-    ground: '#0E1A2A',
-    groundLine: '#2A4466',
-    road: '#0A1422',
-    lane: '#FFFFFF',
-    laneOpacity: 0.25,
-    curb: '#1A2C44',
     lawn: '#0F2A27',
-    bush: '#1A4A44',
-    car: '#2A6DC4',
-    carWindow: '#5D7FA8',
+    yard: '#0E1A2A',
+    cars: ['#9FB0C4', '#5B6B80', '#B5463E', '#2A6DC4', '#1A2533', '#9FB0C4', '#3E4D60'],
+    carGlass: '#2B4A72',
     wheel: '#05090F',
-    headlight: '#FFD27A',
     light: '#EAF1FA',
+    sun: '#F4EBC4',
+    sunCore: '#F4EBC4',
     cloud: '#FFFFFF',
     bird: '#FFFFFF',
-    beacon: '#FF6B5E',
-    flagPole: '#5B6B80',
   },
 };
 
-/** Distant towers, `[x, top, width]`, repeated left and right so wide screens stay filled. */
-const skyline = [
-  [0, 148, 22], [20, 130, 18], [36, 154, 26], [60, 138, 16], [74, 160, 28], [100, 142, 20], [118, 124, 14], [130, 150, 26],
-  [154, 136, 18], [170, 156, 22], [190, 146, 16], [204, 164, 20], [222, 116, 22], [242, 140, 16], [256, 128, 14], [338, 122, 18],
-  [354, 146, 22], [374, 134, 18],
-];
-const skylineNear = [[90, 146, 34], [136, 158, 36], [336, 142, 20]];
+type ScenePalette = (typeof palettes)[keyof typeof palettes];
 
-/** Tower windows lit at night (and catching the sun by day), `[column, row]` on its 10 × 12 grid. */
-const litWindows = Array.from({ length: 6 * 12 }, (_, i) => [28 + (i % 6), 3 + Math.floor(i / 6)]).filter(([col, row]) => (col * 7 + row * 5) % 4 === 0);
-/** Lit stretches of the side blocks' window ribbons at night, `[x, y]`, 14 wide. */
-const litRibbons = [[27, 121], [57, 135], [42, 149], [72, 149], [27, 163], [57, 177], [365, 131], [395, 145], [380, 173]];
+/** The left hall's sawtooth roof: teeth `SAW_W` wide, `SAW_H` tall, standing on `SAW_BASE`. */
+const SAW_X = -4;
+const SAW_W = 16;
+const SAW_H = 9;
+const SAW_BASE = 152;
+const sawTeeth = Array.from({ length: 8 }, (_, i) => SAW_X + i * SAW_W);
 
-const stars = [[22, 90, 0.9], [60, 70, 0.8], [98, 96, 0.8], [120, 62, 1], [146, 92, 0.8], [160, 116, 0.7], [178, 58, 1.1], [204, 84, 0.8], [236, 66, 1], [250, 100, 0.7], [356, 86, 0.8], [380, 100, 1]];
+/** The main block, its sign along the top with the THACO wordmark in the middle, and its three-storey curtain wall. */
+const FASCIA = { x: 108, y: 74, w: 178, h: 32 };
+const LOGO_H = 18;
+const LOGO_W = LOGO_H * WORDMARK_RATIO;
+const CURTAIN = { x: 120, y: 112, cols: 11, rows: 3, pane: 14, row: 16 };
+/** Curtain-wall panes lit at night (and catching the sun by day), `[column, row]`. */
+const litPanes = [[0, 0], [3, 0], [4, 1], [7, 0], [8, 2], [10, 1], [1, 2], [5, 2]];
+
+/** The gate's two pillars, either side of the lane, and the fence running off from them along the front. */
+const PILLARS = [88, 167];
+const PILLAR_W = 9;
+const FENCE_TOP = 176;
+/** The barrier's post just inside the left pillar; the arm pivots on it and stands almost upright. */
+const BARRIER = { x: 99, pivot: { x: 101.5, y: 170 }, angle: -84, length: 60 };
+
+/** The way in: the lane between the gate's pillars at the ground, widening towards the viewer. */
+const LANE = { left: 98, right: 166 };
+const ROAD_FOOT = { left: 40, right: 224 };
+/** The road's edges at height `y`, below the ground line. */
+function roadAt(y: number) {
+  const t = (y - GROUND) / (VIEW_H - GROUND);
+  return { left: LANE.left + (ROAD_FOOT.left - LANE.left) * t, right: LANE.right + (ROAD_FOOT.right - LANE.right) * t };
+}
+
+/** The sun by day (a disc with ten rays) and the crescent moon at night, in the top-right corner. */
+const SUN = { x: 370, y: 36 };
+const sunRays = Array.from({ length: 10 }, (_, i) => {
+  const a = (i / 10) * Math.PI * 2;
+  return [SUN.x + Math.cos(a) * 14, SUN.y + Math.sin(a) * 14, SUN.x + Math.cos(a) * 18.5, SUN.y + Math.sin(a) * 18.5];
+});
+
+const stars = [[20, 112, 0.9], [22, 86, 0.9], [60, 72, 0.8], [98, 96, 0.8], [124, 62, 1], [300, 96, 0.8], [356, 96, 0.8]];
 const trees = [
-  { x: 8, r: 15 },
-  { x: 158, r: 11 },
-  { x: 366, r: 13 },
+  { x: 288, r: 8 },
+  { x: 386, r: 10 },
 ];
+/** Finished cars parked in rows on the yard either side of the road, `[row y, first x]`; mostly hidden by the counters. */
+const carRows = [[208, 6], [232, 16], [256, 2]];
+const parkedCars = carRows.flatMap(([y, x0], row) =>
+  Array.from({ length: 17 }, (_, i) => ({ x: x0 + i * 23, y, color: (i + row * 3) % 7 })).filter(({ x }) => {
+    const road = roadAt(y + 9);
+    return x + 18 < road.left - 3 || x > road.right + 3;
+  }),
+);
 
-/** The scene at the current screen width: the drawing's height and how far it rises above the toolbar's top (`lift`). */
+/** How far below the ground line a header that stops under the gate cuts the picture: past the coach and its shadow. */
+const GATE_CUT = 12;
+
+/**
+ * The scene at the current screen width: the drawing's height, how far it rises above the toolbar's top (`lift`), and
+ * how far below the toolbar's top a header cut just under the gate ends (`gate`), for screens without the counters.
+ */
 export function useGuestScene() {
   const { width } = useWindowDimensions();
   const scale = Math.min(width, MAX_WIDTH) / VIEW_W;
-  return { height: VIEW_H * scale, lift: TOOLBAR * scale };
+  return { height: VIEW_H * scale, lift: TOOLBAR * scale, gate: (GROUND + GATE_CUT - TOOLBAR) * scale };
 }
 
 /**
- * The guest dashboard's background picture, drawn behind its title and counters: an office tower and its lobby, the
- * guard booth and barrier at the gate, trees, a distant skyline, and the road with a car and a lawn in front. By day
- * under the sun with clouds; at night with lit windows, the moon and stars. It fills its parent, whose top is the
- * toolbar's: the drawing rises `lift` above it, and under the drawing the lawn goes on down to the parent's bottom.
+ * The guest dashboard's header picture, drawn behind its title and counters: the THACO Chu Lai plant under its own sky,
+ * which runs on up past the top of the screen. The tall main block carries a large THACO sign over three storeys of
+ * glass, between a sawtooth assembly hall and a vaulted hall, with taller shop blocks and two stacks behind them and a
+ * port crane at the back. In front run the fence and the gate: two pillars with lamps, the sliding leaf rolled open, the
+ * guard booth with its signal on green and the barrier arm raised, and a guests' 50-seat coach, seen from behind,
+ * driving up the road through it. Trees and rows of finished cars stand
+ * on the yard either side of the road. By day under the sun with clouds and gulls; at night with lit windows, a lit
+ * sign, the crescent moon and stars. It fills its parent, whose top is the toolbar's: the drawing rises `lift` above it,
+ * and under the drawing the yard goes on down to the parent's bottom.
  */
 export function GuestScene() {
   const { height, lift } = useGuestScene();
@@ -158,131 +246,331 @@ export function GuestScene() {
       importantForAccessibility="no-hide-descendants"
       style={{ position: 'absolute', top: -lift, left: 0, right: 0, bottom: 0 }}
     >
+      {/* The sky goes on up past the screen's top, so the status bar and a pull to refresh show more of it. */}
+      <View style={{ position: 'absolute', top: -SKY_ABOVE, left: 0, right: 0, height: SKY_ABOVE + 2, backgroundColor: c.sky[0] }} />
       <Svg width="100%" height={height} viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMax meet">
         <Defs>
+          <LinearGradient id="sceneSky" gradientUnits="userSpaceOnUse" x1={0} y1={0} x2={0} y2={HORIZON}>
+            <Stop offset="0" stopColor={c.sky[0]} />
+            <Stop offset="1" stopColor={c.sky[1]} />
+          </LinearGradient>
           <RadialGradient id="sceneLight">
             <Stop offset="0" stopColor={c.light} stopOpacity={night ? 0.35 : 0.9} />
             <Stop offset="1" stopColor={c.light} stopOpacity={0} />
           </RadialGradient>
-          <Pattern id="sceneLane" width={30} height={2} patternUnits="userSpaceOnUse">
-            <Rect width={16} height={2} rx={1} fill={c.lane} fillOpacity={c.laneOpacity} />
+          <Mask id="moonCut">
+            <Rect x={330} y={0} width={60} height={70} fill="#FFFFFF" />
+            <Circle cx={SUN.x + 4.5} cy={SUN.y - 3.5} r={8} fill="#000000" />
+          </Mask>
+          <Pattern id="fenceBars" width={3.5} height={10} patternUnits="userSpaceOnUse">
+            <Rect width={0.9} height={10} fill={c.fence} />
           </Pattern>
-          <Pattern id="sceneWindows" width={10} height={12} patternUnits="userSpaceOnUse">
-            <Rect x={2} y={3} width={6} height={7} rx={0.8} fill={c.window} fillOpacity={c.windowOpacity} />
+          <Pattern id="gateBars" width={2.4} height={14} patternUnits="userSpaceOnUse">
+            <Rect width={0.8} height={14} fill={c.fence} />
           </Pattern>
+          <RadialGradient id="pillarGlow">
+            <Stop offset="0" stopColor={c.pillarLamp} stopOpacity={night ? 0.6 : 0} />
+            <Stop offset="1" stopColor={c.pillarLamp} stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="signGlow">
+            <Stop offset="0" stopColor="#5AA2E6" stopOpacity={c.signGlow} />
+            <Stop offset="1" stopColor="#5AA2E6" stopOpacity={0} />
+          </RadialGradient>
         </Defs>
 
-        {/* Sky: sun and clouds by day, moon and stars at night. */}
-        <Circle cx={374} cy={58} r={34} fill="url(#sceneLight)" />
-        <Circle cx={374} cy={58} r={night ? 8 : 10} fill={c.light} />
+        {/* Sky: sun, clouds and gulls by day, moon and stars at night. */}
+        <Rect x={-VIEW_W} y={-VIEW_H} width={VIEW_W * 3} height={VIEW_H + GROUND} fill="url(#sceneSky)" />
+        <Circle cx={SUN.x} cy={SUN.y} r={night ? 26 : 32} fill="url(#sceneLight)" />
+        {night ? (
+          <Circle cx={SUN.x} cy={SUN.y} r={10} fill={c.sun} mask="url(#moonCut)" />
+        ) : (
+          <>
+            <G stroke={c.sun} strokeWidth={2} strokeLinecap="round">
+              {sunRays.map(([x1, y1, x2, y2]) => (
+                <Path key={`${x1}-${y1}`} d={`M${x1} ${y1} L${x2} ${y2}`} />
+              ))}
+            </G>
+            <Circle cx={SUN.x} cy={SUN.y} r={10} fill={c.sun} />
+            <Circle cx={SUN.x - 2} cy={SUN.y - 2} r={6} fill={c.sunCore} />
+          </>
+        )}
         {night ? (
           stars.map(([x, y, r]) => <Circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#FFFFFF" fillOpacity={0.7} />)
         ) : (
           <>
-            <Cloud x={52} y={80} size={0.7} color={c.cloud} />
-            <Cloud x={150} y={86} size={1} color={c.cloud} />
-            <Cloud x={226} y={106} size={0.75} color={c.cloud} />
+            <Cloud x={30} y={100} size={0.65} color={c.cloud} />
+            <Cloud x={264} y={58} size={0.55} color={c.cloud} />
             <G stroke={c.bird} strokeOpacity={0.35} strokeWidth={1.2} strokeLinecap="round" fill="none">
-              <Path d="M214 84 q3 -3 6 0 q3 -3 6 0" />
-              <Path d="M232 76 q2.4 -2.4 4.8 0 q2.4 -2.4 4.8 0" />
+              <Path d="M42 116 q3 -3 6 0 q3 -3 6 0" />
+              <Path d="M58 108 q2.4 -2.4 4.8 0 q2.4 -2.4 4.8 0" />
             </G>
           </>
         )}
 
-        {/* Skyline in the distance, then a nearer row of blocks. */}
-        {[-VIEW_W, 0, VIEW_W].map((dx) => (
-          <G key={dx} transform={`translate(${dx} 0)`} fill={c.skyline}>
-            {skyline.map(([x, y, w]) => (
-              <Rect key={x} x={x} y={y} width={w} height={GROUND - y} />
-            ))}
+        {/* The hills of Núi Thành behind the plant. */}
+        <Path d="M-10 150 L14 132 L34 138 L66 116 L100 134 L128 124 L170 150 Z" fill={c.ridge} />
+
+        {/* The port crane at the back: legs, portal beam, A-frame, the boom with its stays, trolley and box. */}
+        <G fill={c.crane}>
+          <Rect x={318} y={74} width={3} height={76} />
+          <Rect x={342} y={74} width={3} height={76} />
+          <Rect x={318} y={88} width={27} height={3} />
+          <Rect x={282} y={72} width={102} height={4} />
+          <Rect x={300} y={76} width={9} height={5} fill={c.craneDark} />
+          <Rect x={304} y={81} width={0.8} height={8} />
+          <Rect x={299} y={89} width={11} height={6} fill={c.box} />
+        </G>
+        <G stroke={c.crane} strokeWidth={1.4} fill="none">
+          <Path d="M319.5 74 L331.5 50 L343.5 74" />
+          <Path d="M331.5 50 L286 72 M331.5 50 L380 72" strokeWidth={0.8} />
+        </G>
+        <Circle cx={331.5} cy={49} r={1.8} fill={c.beacon} />
+
+        {/* Taller shop blocks behind the halls, with ribbon windows, and two stacks on the left one. */}
+        {[70, 84].map((x) => (
+          <G key={x}>
+            <Rect x={x} y={88} width={7} height={36} fill={c.stack} />
+            <Rect x={x} y={88} width={7} height={4} fill={c.stackBand} />
+            {night ? <Circle cx={x + 3.5} cy={86.6} r={1.2} fill={c.beacon} /> : null}
           </G>
         ))}
-        <G fill={c.skylineNear}>
-          {skylineNear.map(([x, y, w]) => (
-            <Rect key={x} x={x} y={y} width={w} height={GROUND - y} />
+        <Rect x={-4} y={124} width={116} height={GROUND - 124} fill={c.backBlock} />
+        <Rect x={280} y={100} width={116} height={GROUND - 100} fill={c.backBlock} />
+        <G fill={c.backRibbon}>
+          {[130, 137].map((y) => (
+            <Rect key={y} x={2} y={y} width={104} height={3} />
+          ))}
+          {[107, 114, 121].map((y) => (
+            <Rect key={y} x={290} y={y} width={100} height={3} />
           ))}
         </G>
 
-        {/* Side blocks with ribbon windows, left and right. */}
-        <Rect x={22} y={112} width={70} height={GROUND - 112} fill={c.block} />
-        <Rect x={34} y={104} width={26} height={8} fill={c.blockShade} />
-        <Rect x={66} y={106} width={10} height={6} fill={c.blockShade} />
-        <Rect x={360} y={108} width={60} height={GROUND - 108} fill={c.block} />
-        <Rect x={368} y={100} width={22} height={8} fill={c.blockShade} />
-        {[121, 135, 149, 163, 177].map((y) => (
-          <G key={y} fill={c.ribbon}>
-            <Rect x={27} y={y} width={60} height={7} rx={1} />
-            <Rect x={365} y={y} width={60} height={7} rx={1} />
+        {/* Left: the sawtooth assembly hall, glazed north lights, a blue band, ribbon windows and roller doors. */}
+        <Path
+          d={`M${SAW_X} ${SAW_BASE} ${sawTeeth.map((x) => `L${x} ${SAW_BASE - SAW_H} L${x + SAW_W} ${SAW_BASE}`).join(' ')} Z`}
+          fill={c.saw}
+        />
+        {sawTeeth.map((x) => (
+          <Rect key={x} x={x} y={SAW_BASE - SAW_H} width={1.6} height={SAW_H} fill={c.sawGlass} />
+        ))}
+        <Rect x={SAW_X} y={SAW_BASE} width={128} height={GROUND - SAW_BASE} fill={c.wall} />
+        <Rect x={SAW_X} y={SAW_BASE + 3} width={128} height={3} fill={c.band} />
+        <Rect x={2} y={SAW_BASE + 9} width={104} height={4} fill={c.ribbon} />
+        {[0, 20].map((x) => (
+          <G key={x}>
+            <Rect x={x} y={172} width={16} height={GROUND - 172} fill={c.door} />
+            {[175, 179, 183, 187].map((y) => (
+              <Rect key={y} x={x} y={y} width={16} height={0.8} fill={c.doorLine} />
+            ))}
           </G>
         ))}
-        {night ? litRibbons.map(([x, y]) => <Rect key={`${x}-${y}`} x={x} y={y} width={14} height={7} rx={1} fill={c.ribbonLit} fillOpacity={0.8} />) : null}
 
-        {/* The tower: front with its window grid, a lit accent edge, the shaded side, roof and beacon. */}
-        <Rect x={274} y={22} width={68} height={GROUND - 22} fill={c.tower} />
-        <Path d={`M342 22 L356 29 L356 ${GROUND} L342 ${GROUND} Z`} fill={c.towerSide} />
-        <Rect x={280} y={30} width={60} height={150} fill="url(#sceneWindows)" />
-        {litWindows.map(([col, row]) => (
-          <Rect key={`${col}-${row}`} x={col * 10 + 2} y={row * 12 + 3} width={6} height={7} rx={0.8} fill={c.windowLit} fillOpacity={c.windowLitOpacity} />
+        {/* Right: the vaulted hall, blue band, clerestory and roller doors. */}
+        <Path d="M278 140 Q338 114 398 140 Z" fill={c.vault} />
+        <Path d="M338 127 Q370 129 398 140 L338 140 Z" fill={c.vaultShade} />
+        <Rect x={280} y={140} width={116} height={GROUND - 140} fill={c.wall} />
+        <Rect x={280} y={143} width={116} height={3} fill={c.band} />
+        <Rect x={286} y={150} width={104} height={4} fill={c.ribbon} />
+        {[300, 332, 364].map((x) => (
+          <G key={x}>
+            <Rect x={x} y={162} width={22} height={GROUND - 162} fill={c.door} />
+            {[166, 170, 174, 178, 182, 186].map((y) => (
+              <Rect key={y} x={x} y={y} width={22} height={0.8} fill={c.doorLine} />
+            ))}
+          </G>
         ))}
-        <Path d="M294 22 L310 22 L280 130 L274 130 L274 92 Z" fill="#FFFFFF" fillOpacity={c.streakOpacity} />
-        <Rect x={274} y={22} width={4} height={GROUND - 22} fill={c.towerAccent} />
-        <Rect x={271} y={17} width={72} height={5} rx={1} fill={c.towerRoof} />
-        <Path d="M343 17 L357 24 L357 29 L343 22 Z" fill={c.towerRoof} />
-        <Rect x={326} y={5} width={2} height={12} fill={c.towerRoof} />
-        <Circle cx={327} cy={4.5} r={1.8} fill={c.beacon} />
 
-        {/* The lobby wing: glass band, entrance canopy and doors. */}
-        <Rect x={176} y={132} width={98} height={GROUND - 132} fill={c.podium} />
-        <Rect x={173} y={128} width={104} height={5} rx={1} fill={c.podiumRoof} />
-        <Rect x={182} y={140} width={86} height={15} fill={c.glass} fillOpacity={c.glassOpacity} />
-        {[196, 210, 224, 239, 253].map((x) => (
-          <Rect key={x} x={x} y={140} width={1.2} height={15} fill={c.podium} />
+        {/* The main block: the THACO sign along the top, three storeys of glass, side windows, entrance canopy and doors. */}
+        <Circle cx={FASCIA.x + FASCIA.w / 2} cy={FASCIA.y + FASCIA.h / 2} r={110} fill="url(#signGlow)" />
+        <Rect x={FASCIA.x + 4} y={FASCIA.y + FASCIA.h} width={FASCIA.w - 8} height={GROUND - FASCIA.y - FASCIA.h} fill={c.wall} />
+        <Rect x={FASCIA.x + FASCIA.w - 22} y={FASCIA.y + FASCIA.h} width={18} height={GROUND - FASCIA.y - FASCIA.h} fill={c.wallShade} />
+        <Rect x={FASCIA.x - 2} y={FASCIA.y - 3} width={FASCIA.w + 4} height={3} fill={c.fasciaCap} />
+        <Rect x={FASCIA.x} y={FASCIA.y} width={FASCIA.w} height={FASCIA.h} fill={c.fascia} />
+        <SvgImage
+          href={images.wordmark}
+          x={FASCIA.x + (FASCIA.w - LOGO_W) / 2}
+          y={FASCIA.y + (FASCIA.h - LOGO_H) / 2}
+          width={LOGO_W}
+          height={LOGO_H}
+          preserveAspectRatio="xMidYMid meet"
+        />
+        <Rect
+          x={CURTAIN.x}
+          y={CURTAIN.y}
+          width={CURTAIN.cols * CURTAIN.pane}
+          height={CURTAIN.rows * CURTAIN.row}
+          fill={c.glass}
+          fillOpacity={c.glassOpacity}
+        />
+        {litPanes.map(([col, row]) => (
+          <Rect
+            key={`${col}-${row}`}
+            x={CURTAIN.x + col * CURTAIN.pane}
+            y={CURTAIN.y + row * CURTAIN.row}
+            width={CURTAIN.pane}
+            height={CURTAIN.row}
+            fill={c.windowLit}
+            fillOpacity={c.windowLitOpacity * 0.5}
+          />
         ))}
-        <Rect x={210} y={163} width={40} height={GROUND - 163} fill={c.glass} fillOpacity={c.glassOpacity} />
-        <Rect x={229.4} y={163} width={1.2} height={GROUND - 163} fill={c.podium} />
-        <Rect x={204} y={159} width={52} height={4} rx={1} fill={c.canopy} />
+        {Array.from({ length: CURTAIN.cols - 1 }, (_, i) => (
+          <Rect key={i} x={CURTAIN.x + (i + 1) * CURTAIN.pane - 0.6} y={CURTAIN.y} width={1.2} height={CURTAIN.rows * CURTAIN.row} fill={c.wall} />
+        ))}
+        {Array.from({ length: CURTAIN.rows - 1 }, (_, i) => (
+          <Rect key={i} x={CURTAIN.x} y={CURTAIN.y + (i + 1) * CURTAIN.row - 1} width={CURTAIN.cols * CURTAIN.pane} height={2} fill={c.wall} />
+        ))}
+        {[124, 140, 244, 260].map((x) => (
+          <Rect key={x} x={x} y={170} width={12} height={9} fill={c.glass} fillOpacity={c.glassOpacity * 0.7} />
+        ))}
+        <Rect x={180} y={164} width={52} height={4} fill={c.canopy} />
+        <Rect x={188} y={168} width={36} height={GROUND - 168} fill={c.glass} fillOpacity={c.glassOpacity} />
+        <Rect x={205.4} y={168} width={1.2} height={GROUND - 168} fill={c.wall} />
 
-        {/* Trees, behind the barrier. */}
+        {/* The guard post: the flag and the booth with its lit window and the signal on green. */}
+        <Rect x={42} y={126} width={1.2} height={GROUND - 126} fill={c.flagPole} />
+        <Rect x={43.2} y={127} width={12} height={8} fill="#DA251D" />
+        <Path d="M49.2 128.6 L50 130.6 L52.1 130.6 L50.4 131.8 L51 133.8 L49.2 132.6 L47.4 133.8 L48 131.8 L46.3 130.6 L48.4 130.6 Z" fill="#FFDE00" />
+        <Rect x={52} y={158} width={34} height={GROUND - 158} fill={c.booth} />
+        <Rect x={52} y={GROUND - 4} width={34} height={4} fill={c.boothShade} />
+        <Rect x={48} y={152} width={42} height={6} fill={c.boothRoof} />
+        <Rect x={56} y={163} width={20} height={13} fill={c.boothWindow} />
+        <Rect x={65.4} y={163} width={1.2} height={13} fill={c.booth} />
+        <Rect x={78.5} y={161} width={5} height={10} rx={1} fill={c.barrierPost} />
+        <Circle cx={81} cy={163.6} r={1.5} fill={c.barrierRed} fillOpacity={0.35} />
+        <Circle cx={81} cy={168.2} r={1.6} fill={c.lamp} />
+
+        {/* Trees at the sides. */}
         {trees.map(({ x, r }) => (
           <G key={x}>
-            <Rect x={x - 1.5} y={GROUND - 16} width={3} height={16} fill={c.trunk} />
-            <Circle cx={x} cy={GROUND - r - 10} r={r} fill={c.tree} />
-            <Circle cx={x + r * 0.55} cy={GROUND - r * 0.7 - 8} r={r * 0.72} fill={c.treeShade} />
+            <Rect x={x - 1.2} y={GROUND - 12} width={2.4} height={12} fill={c.trunk} />
+            <Circle cx={x} cy={GROUND - r - 8} r={r} fill={c.tree} />
+            <Circle cx={x + r * 0.55} cy={GROUND - r * 0.7 - 6} r={r * 0.72} fill={c.treeShade} />
           </G>
         ))}
 
-        {/* The gate: a flag, the guard booth with a lit window and the striped barrier arm. */}
-        <Rect x={98.5} y={124} width={1.5} height={GROUND - 124} fill={c.flagPole} />
-        <Path d="M100 125 q7 -2.5 14 0 v9 q-7 -2.5 -14 0 Z" fill={c.canopy} />
-        <Rect x={108} y={160} width={26} height={GROUND - 160} fill={c.booth} />
-        <Rect x={104} y={154} width={34} height={6} rx={1.5} fill={c.boothRoof} />
-        <Rect x={112} y={166} width={18} height={11} rx={1} fill={c.boothWindow} />
-        <Rect x={137} y={166} width={5} height={GROUND - 166} rx={1} fill={c.barrierPost} />
-        <Rect x={142} y={167} width={52} height={4} rx={2} fill={c.barrierWhite} />
-        {[142, 158, 174].map((x) => (
-          <Rect key={x} x={x} y={167} width={8} height={4} fill={c.barrierRed} />
+        {/* The fence along the front, left and right of the gate: a low base, two rails and close bars, with a post every
+            28. The sliding gate leaf stands rolled open along the right-hand fence. */}
+        {[
+          [-4, PILLARS[0]],
+          [PILLARS[1] + PILLAR_W, VIEW_W + 6],
+        ].map(([from, to]) => (
+          <G key={from}>
+            <Rect x={from} y={FENCE_TOP} width={to - from} height={GROUND - 4 - FENCE_TOP} fill="url(#fenceBars)" />
+            <Rect x={from} y={FENCE_TOP} width={to - from} height={1.2} fill={c.fence} />
+            <Rect x={from} y={FENCE_TOP + 6} width={to - from} height={1} fill={c.fence} />
+            <Rect x={from} y={GROUND - 4} width={to - from} height={4} fill={c.fenceBase} />
+            {Array.from({ length: Math.floor((to - from) / 28) }, (_, i) => (
+              <Rect key={i} x={from + 14 + i * 28} y={FENCE_TOP - 2} width={2.2} height={GROUND - FENCE_TOP + 2} fill={c.fence} />
+            ))}
+          </G>
         ))}
-        <Circle cx={139.5} cy={169} r={3.5} fill={c.barrierPost} />
+        <G>
+          <Rect x={178} y={172} width={46} height={15} fill="url(#gateBars)" />
+          <Rect x={178} y={172} width={46} height={1.6} fill={c.fence} />
+          <Rect x={178} y={185.4} width={46} height={1.6} fill={c.fence} />
+          <Rect x={178} y={172} width={1.6} height={15} fill={c.fence} />
+          <Rect x={222.4} y={172} width={1.6} height={15} fill={c.fence} />
+          {[183, 219].map((x) => (
+            <Circle key={x} cx={x} cy={188.6} r={1.4} fill={c.fence} />
+          ))}
+        </G>
 
-        {/* In front: the pavement, the road with its lane marks and a car, the kerb and a lawn with bushes at the sides. */}
-        <Rect x={-VIEW_W} y={GROUND} width={VIEW_W * 3} height={10} fill={c.ground} />
-        <Rect x={-VIEW_W} y={GROUND} width={VIEW_W * 3} height={1.5} fill={c.groundLine} fillOpacity={0.7} />
-        <Rect x={-VIEW_W} y={202} width={VIEW_W * 3} height={38} fill={c.road} />
-        <Rect x={-VIEW_W} y={220} width={VIEW_W * 3} height={2} fill="url(#sceneLane)" />
-        <Rect x={-VIEW_W} y={240} width={VIEW_W * 3} height={4} fill={c.curb} />
-        <Rect x={-VIEW_W} y={244} width={VIEW_W * 3} height={VIEW_H - 244} fill={c.lawn} />
-        {[6, 26, 364, 384].map((x) => (
-          <Circle key={x} cx={x} cy={258} r={9} fill={c.bush} />
+        {/* The gate's pillars with a cap and a lamp on top each, and the barrier: its post inside the left pillar and the
+            striped arm raised for the coach. */}
+        {PILLARS.map((x) => (
+          <G key={x}>
+            <Circle cx={x + PILLAR_W / 2} cy={155} r={10} fill="url(#pillarGlow)" />
+            <Rect x={x} y={160} width={PILLAR_W} height={GROUND - 160} fill={c.pillar} />
+            <Rect x={x + PILLAR_W - 2.4} y={160} width={2.4} height={GROUND - 160} fill={c.pillarShade} />
+            <Rect x={x - 1} y={157} width={PILLAR_W + 2} height={3} fill={c.pillarCap} />
+            <Rect x={x + PILLAR_W / 2 - 0.6} y={153.5} width={1.2} height={3.5} fill={c.pillarCap} />
+            <Circle cx={x + PILLAR_W / 2} cy={152.6} r={2.2} fill={c.pillarLamp} />
+          </G>
         ))}
-        <Path d="M58 223 L64 214 L80 214 L86 223 Z" fill={c.car} />
-        <Path d="M61.5 222 L65.5 216.5 L78.5 216.5 L82.5 222 Z" fill={c.carWindow} />
-        <Rect x={48} y={222} width={44} height={12} rx={4} fill={c.car} />
-        <Rect x={89} y={225} width={3} height={3} rx={1} fill={c.headlight} />
-        <Circle cx={58} cy={234} r={4} fill={c.wheel} />
-        <Circle cx={82} cy={234} r={4} fill={c.wheel} />
+        <Rect x={BARRIER.x} y={166} width={5} height={GROUND - 166} fill={c.barrierPost} />
+        <G transform={`rotate(${BARRIER.angle} ${BARRIER.pivot.x} ${BARRIER.pivot.y})`}>
+          <Rect x={BARRIER.pivot.x + 2} y={BARRIER.pivot.y - 2} width={BARRIER.length} height={4} fill={c.barrierWhite} />
+          {[0, 16, 32, 48].map((dx) => (
+            <Rect key={dx} x={BARRIER.pivot.x + 2 + dx} y={BARRIER.pivot.y - 2} width={8} height={4} fill={c.barrierRed} />
+          ))}
+        </G>
+        <Circle cx={BARRIER.pivot.x} cy={BARRIER.pivot.y} r={3.2} fill={c.barrierPost} />
+
+        {/* In front: a strip of lawn, the yard with rows of finished cars, and the road up to the gate with its centre
+            line; the coach on it, driving in. */}
+        <Rect x={-VIEW_W} y={GROUND} width={VIEW_W * 3} height={6} fill={c.lawn} />
+        <Rect x={-VIEW_W} y={GROUND + 6} width={VIEW_W * 3} height={VIEW_H - GROUND - 6} fill={c.yard} />
+        {parkedCars.map(({ x, y, color }) => (
+          <ParkedCar key={`${x}-${y}`} x={x} y={y} color={c.cars[color]} glass={c.carGlass} wheel={c.wheel} />
+        ))}
+        <Path
+          d={`M${LANE.left} ${GROUND} L${LANE.right} ${GROUND} L${ROAD_FOOT.right} ${VIEW_H} L${ROAD_FOOT.left} ${VIEW_H} Z`}
+          fill={c.road}
+        />
+        <G fill={c.roadLine}>
+          {[
+            [196, 3, 1],
+            [206, 5, 1.4],
+            [220, 7, 1.8],
+            [238, 9, 2.2],
+            [260, 11, 2.6],
+            [286, 13, 3],
+          ].map(([y, h, w]) => (
+            <Rect key={y} x={(LANE.left + LANE.right) / 2 - w / 2} y={y} width={w} height={h} />
+          ))}
+        </G>
+        <CoachRear cx={(LANE.left + LANE.right) / 2} c={c} />
       </Svg>
-      <View className="flex-1" style={{ backgroundColor: c.lawn }} />
+      <View className="flex-1" style={{ backgroundColor: c.yard }} />
     </View>
+  );
+}
+
+/**
+ * A 50-seat coach seen from behind as it drives in through the gate: 30 wide and about 47 tall, centred on `cx`, its
+ * wheels just in front of the ground line. The roof air-conditioning pod, the big rear window, a white stripe, tail
+ * lights in dark frames either side of the engine grille, the number plate, the bumper, the wheels and its shadow.
+ */
+function CoachRear({ cx, c }: { cx: number; c: ScenePalette }) {
+  const x = cx - 15;
+  const top = 150;
+  return (
+    <G>
+      <Ellipse cx={cx} cy={196.6} rx={19} ry={2.4} fill="#000000" fillOpacity={c.shadow} />
+      {[x + 1.5, x + 22.5].map((wx) => (
+        <Rect key={wx} x={wx} y={top + 41} width={6} height={6} rx={1.5} fill={c.wheel} />
+      ))}
+      <Rect x={x + 4} y={top - 2.5} width={22} height={3.5} rx={1.2} fill={c.busShade} />
+      <Rect x={x} y={top} width={30} height={43} rx={3.5} fill={c.bus} />
+      <Rect x={x + 3} y={top + 3} width={24} height={14} rx={1.6} fill={c.busGlass} />
+      <Rect x={x} y={top + 20} width={30} height={1.8} fill="#FFFFFF" fillOpacity={0.9} />
+      {[x + 1.6, x + 25].map((lx) => (
+        <G key={lx}>
+          <Rect x={lx} y={top + 24} width={3.4} height={13} rx={1} fill={c.wheel} />
+          <Rect x={lx + 0.7} y={top + 25} width={2} height={3} fill={c.tailAmber} />
+          <Rect x={lx + 0.7} y={top + 29} width={2} height={7} fill={c.tailRed} />
+        </G>
+      ))}
+      {[26, 29, 32].map((dy) => (
+        <Rect key={dy} x={x + 7} y={top + dy} width={16} height={0.9} fill={c.busShade} />
+      ))}
+      <Rect x={cx - 4.5} y={top + 35} width={9} height={3.6} rx={0.5} fill={c.plate} />
+      <Rect x={cx - 3} y={top + 36.4} width={6} height={0.8} fill={c.wheel} />
+      <Rect x={x - 1} y={top + 39.5} width={32} height={3.5} rx={1.2} fill={c.wheel} fillOpacity={0.85} />
+    </G>
+  );
+}
+
+/** A small car seen from the side, 18 wide and 9 tall, its top-left at `x`, `y`. */
+function ParkedCar({ x, y, color, glass, wheel }: { x: number; y: number; color: string; glass: string; wheel: string }) {
+  return (
+    <G>
+      <Path d={`M${x + 4} ${y + 4} L${x + 6.5} ${y} L${x + 12.5} ${y} L${x + 15} ${y + 4} Z`} fill={color} />
+      <Path d={`M${x + 6} ${y + 3.6} L${x + 7.4} ${y + 1} L${x + 11.6} ${y + 1} L${x + 13} ${y + 3.6} Z`} fill={glass} />
+      <Rect x={x} y={y + 3.6} width={18} height={4} fill={color} />
+      <Circle cx={x + 4} cy={y + 7.6} r={1.6} fill={wheel} />
+      <Circle cx={x + 14} cy={y + 7.6} r={1.6} fill={wheel} />
+    </G>
   );
 }
 
