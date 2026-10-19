@@ -4,7 +4,7 @@ import { unregisterPushToken } from '@/core/notifications/push';
 import { clearQueryCache } from '@/core/query/queryClient';
 import { kv, kvKeys, readJSON, writeJSON } from '@/core/storage/kv';
 
-import { biometricAccount, type BiometricSession, disableBiometric, dropOrphanedCredentials, enableBiometric } from './biometric';
+import { biometricAccount, type BiometricSession, disableBiometric, dropOrphanedCredentials, dropOthersBiometric, enableBiometric } from './biometric';
 import { fetchMyApps, type MyApp } from './myApps';
 import { type SignOutReason, useSessionStore } from './sessionStore';
 import { endSsoSession, fetchSsoAccount, passwordGrant, refreshGrant, refreshTokenInfo, type SsoAccount } from './sso';
@@ -69,8 +69,10 @@ async function startSession(pair: TokenPair, login: Pick<LoginRequest, 'username
   kv.set(kvKeys.lastDomain, login.domain);
   writeJSON(kvKeys.ssoAccount, { id: account.id, username: account.username, email: account.email } satisfies SsoAccount);
   saveApps(apps);
-  // A different person may be signing in on a shared device; never show their cached data.
+  // A different person may be signing in on a shared device; never show their cached data, and never let this
+  // device's Face ID / fingerprint open the previous person's account again.
   clearQueryCache();
+  await dropOthersBiometric({ login, userId: account.id });
   useSessionStore.getState().markSignedIn({ username: login.username, apps });
 }
 
@@ -106,12 +108,16 @@ export async function enableBiometricSignIn(request: LoginRequest, prompt: strin
     if (error instanceof SsoError && error.code === 'SSO_CLIENT_REJECTED') throw new SsoError('SSO_OFFLINE_NOT_ALLOWED', error.message);
     throw error;
   }
-  const { offline, sessionId } = refreshTokenInfo(pair.refreshToken);
+  const { offline, sessionId, userId } = refreshTokenInfo(pair.refreshToken);
   if (!offline) {
     void endSsoSession(pair.refreshToken);
     throw new SsoError('SSO_OFFLINE_NOT_ALLOWED');
   }
-  const outcome = await enableBiometric({ refreshToken: pair.refreshToken, account: { username: request.username, domain: request.domain, sessionId } }, prompt, cancelLabel);
+  const outcome = await enableBiometric(
+    { refreshToken: pair.refreshToken, account: { username: request.username, domain: request.domain, sessionId, userId } },
+    prompt,
+    cancelLabel,
+  );
   // Not stored: nothing would ever use or end that session.
   if (outcome !== 'enabled') void endSsoSession(pair.refreshToken);
   return outcome;
@@ -172,8 +178,11 @@ export async function restoreSession() {
     await signOut('expired');
     return;
   }
+  const username = kv.getString(kvKeys.lastUsername) ?? null;
+  // A session started by an app version that left the previous person's biometric sign-in on.
+  if (username) await dropOthersBiometric({ login: { username, domain: kv.getString(kvKeys.lastDomain) ?? '' }, userId: readJSON<SsoAccount>(kvKeys.ssoAccount)?.id });
   const apps = readJSON<MyApp[]>(kvKeys.myApps) ?? null;
-  useSessionStore.getState().markSignedIn({ username: kv.getString(kvKeys.lastUsername) ?? null, apps });
+  useSessionStore.getState().markSignedIn({ username, apps });
   void refreshMyApps();
 }
 

@@ -217,7 +217,6 @@ const en: Translation = {
     enableBiometricTitle: 'Quick sign-in',
     enableBiometricMessage: 'Use Face ID / fingerprint next time?',
     enableBiometricAccept: 'Enable',
-    enableBiometricReplace: 'Use Face ID / fingerprint for this account? {{account}} will no longer have quick sign-in on this device.',
     biometricFailed: 'Biometric check failed. Try again or sign in with your password.',
     biometricInvalidated: 'Face ID / fingerprints on this device changed, so quick sign-in was turned off. Sign in with your password to turn it on again.',
     biometricExpired: 'Quick sign-in expired or was revoked, so it was turned off. Sign in with your password to turn it on again.',

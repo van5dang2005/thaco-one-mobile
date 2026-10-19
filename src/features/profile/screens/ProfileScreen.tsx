@@ -199,7 +199,7 @@ export function ProfileScreen() {
   const queryClient = useQueryClient();
   const profile = useProfile();
   const notifications = useNotificationSetting();
-  const [biometricOn, setBiometricOn] = useState(() => isBiometricEnabled(signedInAccount()));
+  const [biometricOn, setBiometricOn] = useState(() => isBiometricEnabled());
   const [biometric, setBiometric] = useState<BiometricKind>('none');
   const [refreshing, setRefreshing] = useState(false);
   const [sheet, setSheet] = useState<'language' | 'layout' | 'biometric' | null>(null);

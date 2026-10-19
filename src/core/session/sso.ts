@@ -93,6 +93,8 @@ function jwtClaims<T>(jwt: string): T | null {
 
 export type RefreshTokenInfo = {
   sessionId: string | null;
+  /** The Keycloak user (`sub`), the same id the Account API answers as `id`. */
+  userId: string | null;
   offline: boolean;
   /** `iat` / `exp` in ms, on Keycloak's clock; `expiresAt` is null when the token carries no expiry. */
   issuedAt: number | null;
@@ -100,13 +102,14 @@ export type RefreshTokenInfo = {
 };
 
 /**
- * Reads a Keycloak refresh token (inspected, not verified: only Keycloak checks it): the session it belongs
- * to, whether it is an offline token, and its lifetime.
+ * Reads a Keycloak refresh token (inspected, not verified: only Keycloak checks it): the session and user it
+ * belongs to, whether it is an offline token, and its lifetime.
  */
 export function refreshTokenInfo(refreshToken: string): RefreshTokenInfo {
-  const claims = jwtClaims<{ typ?: string; sid?: string; session_state?: string; iat?: number; exp?: number }>(refreshToken);
+  const claims = jwtClaims<{ typ?: string; sid?: string; session_state?: string; sub?: string; iat?: number; exp?: number }>(refreshToken);
   return {
     sessionId: claims?.sid ?? claims?.session_state ?? null,
+    userId: claims?.sub ?? null,
     offline: claims?.typ === 'Offline',
     issuedAt: claims?.iat ? claims.iat * 1000 : null,
     expiresAt: claims?.exp ? claims.exp * 1000 : null,

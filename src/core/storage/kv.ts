@@ -20,7 +20,7 @@ export const kvKeys = {
   /** "Ghi nhớ đăng nhập": prefill the login form with `rememberedUsername`. */
   rememberLogin: 'auth.rememberLogin',
   rememberedUsername: 'auth.rememberedUsername',
-  /** `{ username, domain, sessionId }`: the account Face ID / fingerprint signs in, and the Keycloak session of its offline token. Set only while biometric sign-in is on. */
+  /** `{ username, domain, sessionId, userId }`: the account Face ID / fingerprint signs in, its Keycloak user and the Keycloak session of its offline token. Set only while biometric sign-in is on. */
   biometricAccount: 'auth.biometricSession',
   lastAreaId: 'rooms.lastAreaId',
   /** Expo push token last sent to the back-ends, so sign-out can withdraw it. */

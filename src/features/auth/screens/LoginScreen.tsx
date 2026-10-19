@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { env, loginDomains } from '@/core/config/env';
 import { errorMessage } from '@/core/errors/errorMessage';
 import { currentLanguage, setLanguage } from '@/core/i18n';
-import { biometricAccount, biometricKind, type BiometricKind, type BiometricSession, isBiometricEnabled, unlockBiometric } from '@/core/session/biometric';
+import { biometricKind, type BiometricKind, type BiometricSession, isBiometricEnabled, unlockBiometric } from '@/core/session/biometric';
 import { enableBiometricSignIn, signIn, signInWithBiometric } from '@/core/session/session';
 import { useSessionStore } from '@/core/session/sessionStore';
 import { kv, kvKeys } from '@/core/storage/kv';
@@ -117,10 +117,12 @@ export function LoginScreen() {
     }, [scheme]),
   );
 
-  /** After a password sign-in: offer biometric sign-in for this account, moving it over from another one if needed. */
+  /**
+   * After a password sign-in: offer biometric sign-in for this account. Signing in already turned off another
+   * account's, so any still set up is this account's own.
+   */
   const offerBiometric = (values: LoginForm) => {
-    if (biometric === 'none' || isBiometricEnabled(values)) return;
-    const previous = biometricAccount();
+    if (biometric === 'none' || isBiometricEnabled()) return;
     const enable = async () => {
       try {
         const outcome = await enableBiometricSignIn(values, t('auth.biometricPrompt'), t('common.cancel'));
@@ -130,7 +132,7 @@ export function LoginScreen() {
         toast.error(errorMessage(error, t));
       }
     };
-    Alert.alert(t('auth.enableBiometricTitle'), previous ? t('auth.enableBiometricReplace', { account: previous.username }) : t('auth.enableBiometricMessage'), [
+    Alert.alert(t('auth.enableBiometricTitle'), t('auth.enableBiometricMessage'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('auth.enableBiometricAccept'), onPress: () => void enable() },
     ]);

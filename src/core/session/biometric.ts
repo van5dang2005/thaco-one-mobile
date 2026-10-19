@@ -17,10 +17,13 @@ export type BiometricKind = 'face' | 'fingerprint' | 'none';
 type Login = Pick<LoginRequest, 'username' | 'domain'>;
 
 /**
- * The one account biometric sign-in opens on this device, and the Keycloak session of its offline token.
- * Not secret: the token stays in SecureStore.
+ * The one account biometric sign-in opens on this device, its Keycloak user, and the Keycloak session of its offline
+ * token. Not secret: the token stays in SecureStore. `userId` is missing on accounts saved by older app versions.
  */
-export type BiometricAccount = Login & { sessionId: string | null };
+export type BiometricAccount = Login & { sessionId: string | null; userId?: string | null };
+
+/** Who has just signed in: the login typed (or the biometric one) and, when known, the Keycloak user. */
+export type SignedInUser = { login: Login; userId?: string | null };
 
 /** What Face ID / fingerprint unlocks: an offline refresh token, for `account`. */
 export type BiometricSession = { refreshToken: string; account: BiometricAccount };
@@ -67,10 +70,28 @@ export function biometricAccount(): BiometricAccount | null {
   return readJSON<BiometricAccount>(kvKeys.biometricAccount) ?? null;
 }
 
-/** Biometric sign-in is set up on this device, for `account` when given. */
-export function isBiometricEnabled(account?: Login) {
+/**
+ * The biometric account is `user`'s: the same Keycloak user when both ids are known, so signing in by MSNV or by email
+ * counts as one person; otherwise the same username and domain.
+ */
+const ownedBy = (enabled: BiometricAccount, user: SignedInUser) =>
+  enabled.userId && user.userId ? enabled.userId === user.userId : sameAccount(enabled, user.login);
+
+/**
+ * Biometric sign-in is set up on this device. Once signed in, it is the signed-in user's: signing in as anyone else
+ * turns it off (`dropOthersBiometric`).
+ */
+export function isBiometricEnabled() {
+  return !!biometricAccount();
+}
+
+/**
+ * After a sign-in: when biometric sign-in belongs to another account (someone else used this device before), turn it
+ * off, so this device's Face ID / fingerprint can no longer open that account's session.
+ */
+export async function dropOthersBiometric(user: SignedInUser) {
   const enabled = biometricAccount();
-  return !!enabled && (!account || sameAccount(enabled, account));
+  if (enabled && !ownedBy(enabled, user)) await disableBiometric();
 }
 
 /**
@@ -97,8 +118,8 @@ export async function enableBiometric(session: BiometricSession, prompt: string,
   } catch (error) {
     return isCancel(error) ? 'cancelled' : 'failed';
   }
-  const { username, domain, sessionId } = session.account;
-  writeJSON(kvKeys.biometricAccount, { username: username.trim(), domain, sessionId } satisfies BiometricAccount);
+  const { username, domain, sessionId, userId } = session.account;
+  writeJSON(kvKeys.biometricAccount, { username: username.trim(), domain, sessionId, userId } satisfies BiometricAccount);
   return 'enabled';
 }
 

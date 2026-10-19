@@ -217,7 +217,6 @@ const vi = {
     enableBiometricTitle: 'Đăng nhập nhanh',
     enableBiometricMessage: 'Dùng Face ID / vân tay cho lần đăng nhập sau?',
     enableBiometricAccept: 'Bật',
-    enableBiometricReplace: 'Dùng Face ID / vân tay cho tài khoản này? Tài khoản {{account}} sẽ không còn đăng nhập nhanh trên máy này.',
     biometricFailed: 'Không xác thực được bằng sinh trắc học. Hãy thử lại hoặc đăng nhập bằng mật khẩu.',
     biometricInvalidated: 'Face ID / vân tay trên máy đã thay đổi nên đăng nhập nhanh đã tắt. Hãy đăng nhập bằng mật khẩu để bật lại.',
     biometricExpired: 'Đăng nhập nhanh đã hết hạn hoặc bị thu hồi nên đã được tắt. Hãy đăng nhập bằng mật khẩu để bật lại.',
