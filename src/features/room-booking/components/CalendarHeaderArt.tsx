@@ -19,8 +19,8 @@ const palettes = {
     glowOpacity: 0.42,
     haze: '#8CC4F5',
     hazeOpacity: 0.14,
-    // The glass mirrors the sky: pale at the roof, deeper towards the columns.
-    glass: ['#BCDBF8', '#8CBCEB', '#5F95D3'],
+    // Deep blue glass as in the street photo, brighter than the sky so it still stands out, deeper towards the columns.
+    glass: ['#8EC0F5', '#5A95E0', '#3470C4'],
     // Form round the plan: light on the faces towards the sun, a glint on the right end, shade where it turns away.
     light: '#FFFFFF',
     lightOpacity: 0.55,
@@ -30,10 +30,10 @@ const palettes = {
     crownOpacity: 0.22,
     frame: '#FFFFFF',
     frameOpacity: 0.75,
-    slab: ['#1F4A7E', '#16365F'],
-    slabOpacity: 0.94,
-    lip: '#FFFFFF',
-    lipOpacity: 0.55,
+    slab: ['#12315F', '#0B2248'],
+    slabOpacity: 0.96,
+    lip: '#D6ECFF',
+    lipOpacity: 0.4,
     deepOpacity: 0.07,
     mullion: '#1D4F8A',
     mullionOpacity: 0.16,
@@ -158,9 +158,10 @@ const palettes = {
 };
 
 // ---- helpers ------------------------------------------------------------------------------------
-// Bottom-aligned, the header's rows land on fixed heights: toolbar y ≈ 84–122, area ≈ 135–159, month ≈ 168–212,
-// week band ≈ 227–283 (less picture gap on short screens moves the upper rows down). The tower rises right of the
-// title, its right edge behind "Đặt phòng", and the whole complex ends above the week band.
+// Bottom-aligned, the header's rows land on fixed heights (iPhone 17 Pro): toolbar y ≈ 65–97 (≈ 98 on Android),
+// area ≈ 163–184, month ≈ 192–217 with its chevron ending near x 206, week band ≈ 231–284 (less picture gap on short
+// screens moves the upper rows down). The complex stands right of the month, the robot (from x 214) clear of the
+// chevron, the tower's roof (106) below the toolbar, and the ground (229) just above the week band.
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 type Point = [number, number];
@@ -190,30 +191,30 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 type PlanPoint = { x: number; z: number; nx: number; nz: number; u: number };
 
 /**
- * Sofic Tower (Thisofic, 10 Mai Chí Thọ, Thủ Thiêm), after the user's photos, built as a solid and seen in perspective so
- * every floor bends with the form: a slab about twice as wide as deep, its corners rounded, the right end's most. The outline
- * runs from the back's middle round the left end, the front and the right end, back to the back's middle, so the part
- * the camera sees is one run of it.
+ * Sofic Tower (Thisofic, 10 Mai Chí Thọ, Thủ Thiêm), after the user's street-view photo, built as a solid and seen in
+ * perspective so every floor bends with the form: a slab wider than deep with its corners cut off flat, so each floor
+ * breaks at the facets (the right ones larger). The outline runs from the back's middle round the left end, the front
+ * and the right end, back to the back's middle, so the part the camera sees is one run of it.
  */
-const PLAN = { w: 1, d: 0.46, left: 0.17, right: 0.34 };
+const PLAN = { w: 1, d: 0.62, left: 0.24, right: 0.34 };
 const PLAN_OUTLINE: PlanPoint[] = (() => {
   const { w, d, left: rl, right: rr } = PLAN;
   const pts: Omit<PlanPoint, 'u'>[] = [];
-  const face = (x0: number, z0: number, x1: number, z1: number, nx: number, nz: number) => pts.push({ x: x0, z: z0, nx, nz }, { x: x1, z: z1, nx, nz });
-  const arc = (cx: number, cz: number, r: number, a0: number, a1: number) =>
-    steps(0, 1.001, 1 / 18).forEach((k) => {
-      const a = rad(lerp(a0, a1, k));
-      pts.push({ x: cx + r * Math.cos(a), z: cz + r * Math.sin(a), nx: Math.cos(a), nz: Math.sin(a) });
-    });
-  face(0, -d, -w + rl, -d, 0, -1);
-  arc(-w + rl, -d + rl, rl, 270, 180);
-  face(-w, -d + rl, -w, d - rl, -1, 0);
-  arc(-w + rl, d - rl, rl, 180, 90);
-  face(-w + rl, d, w - rr, d, 0, 1);
-  arc(w - rr, d - rr, rr, 90, 0);
-  face(w, d - rr, w, -d + rr, 1, 0);
-  arc(w - rr, -d + rr, rr, 0, -90);
-  face(w - rr, -d, 0, -d, 0, -1);
+  /** A flat face from (x0, z0) to (x1, z1), its normal pointing out (the outline runs clockwise seen from above). */
+  const face = (x0: number, z0: number, x1: number, z1: number) => {
+    const l = Math.hypot(x1 - x0, z1 - z0);
+    const [nx, nz] = [-(z1 - z0) / l, (x1 - x0) / l];
+    pts.push({ x: x0, z: z0, nx, nz }, { x: x1, z: z1, nx, nz });
+  };
+  face(0, -d, -w + rl, -d);
+  face(-w + rl, -d, -w, -d + rl);
+  face(-w, -d + rl, -w, d - rl);
+  face(-w, d - rl, -w + rl, d);
+  face(-w + rl, d, w - rr, d);
+  face(w - rr, d, w, d - rr);
+  face(w, d - rr, w, -d + rr);
+  face(w, -d + rr, w - rr, -d);
+  face(w - rr, -d, 0, -d);
   let u = 0;
   return pts.map((p, i) => {
     if (i) u += Math.hypot(p.x - pts[i - 1].x, p.z - pts[i - 1].z);
@@ -231,16 +232,16 @@ const planAt = (u: number): PlanPoint => {
 /** Where the front face starts and ends along the outline. */
 const FRONT_U = (() => {
   const { w, d, left: rl, right: rr } = PLAN;
-  const u0 = w - rl + Math.PI * rl + 2 * (d - rl);
+  const u0 = w - rl + 2 * Math.SQRT2 * rl + 2 * (d - rl);
   return [u0, u0 + 2 * w - rl - rr] as const;
 })();
 
 /**
- * The camera stands front-left with the eye low, so the front recedes to the right, the right end turns away and the
- * floors fall towards it, and a sliver of the left end shows in shade, as in the aerial photo. Verticals stay
+ * The camera stands a little right of the front with the eye low, as in the street photo: the wide front almost
+ * square on, the right facet turned to the sun, the left facets a sliver in shade. Verticals stay
  * vertical. `height` is the glass's, foot to roof, in plan units; the plan widens by `flare` at the roof.
  */
-const VIEW = { yaw: rad(16), x: -1.25, y: 0.55, z: 6.2, height: 3.2, flare: 0.08 };
+const VIEW = { yaw: rad(-8), x: 0.7, y: 0.55, z: 6.2, height: 3.2, flare: 0.08 };
 const COS = Math.cos(VIEW.yaw);
 const SIN = Math.sin(VIEW.yaw);
 const heightAt = (t: number) => VIEW.height * (1 - t);
@@ -269,8 +270,11 @@ const runAt = (y: number): PlanPoint[] => {
   return [cross(first - 1, first), ...PLAN_OUTLINE.slice(first, last + 1), cross(last + 1, last)];
 };
 
-/** The tower's box in the scene: its roof's left end beside the title, the right end behind "Đặt phòng". */
-const TOWER_BOX = { x0: 208, x1: 296, top: 70, foot: 189 };
+/**
+ * The tower's box in the scene: right of the month, a little lower and stouter than the photo's proportions (the
+ * user's call), its roof below the toolbar so it never runs under "Đặt phòng".
+ */
+const TOWER_BOX = { x0: 230, x1: 328, top: 106, foot: 195 };
 const FIT = (() => {
   const raw = [0, VIEW.height].flatMap((y) => runAt(y).map((p) => project(p, y)));
   const xs = raw.map(([x]) => x);
@@ -309,12 +313,12 @@ const TOWER_RIGHT = Math.max(...SILHOUETTE_TS.map((t) => floorLine(t).at(-1)![0]
  * glass under it; the top floors, nearer the eye, stand a little taller, as in the photo.
  */
 const CROWN = 0.105;
-const FLOORS = 15;
+const FLOORS = 17;
 const FLOOR_WEIGHTS = Array.from({ length: FLOORS }, (_, i) => 1 + 0.3 * Math.max(0, 1 - i / 3.5));
 const WEIGHT_SUM = FLOOR_WEIGHTS.reduce((a, b) => a + b, 0);
 const floorH = (i: number) => ((1 - CROWN) * FLOOR_WEIGHTS[i]) / WEIGHT_SUM;
 const FLOOR_TS = FLOOR_WEIGHTS.reduce<number[]>((ts, _, i) => [...ts, i ? ts[i - 1] + floorH(i - 1) : CROWN], []);
-const slabH = (i: number) => floorH(i) * 0.27;
+const slabH = (i: number) => floorH(i) * 0.32;
 const SLABS = FLOOR_TS.map((t, i) => band(t, t + slabH(i))).join('');
 const LIPS = FLOOR_TS.map((t, i) => band(t + slabH(i), t + slabH(i) + floorH(i) * 0.06)).join('');
 const DEEPS = FLOOR_TS.map((t, i) => band(t + floorH(i) * 0.7, t + floorH(i))).join('');
@@ -336,8 +340,8 @@ const MULLIONS = steps(VISIBLE_U[0], VISIBLE_U[1], 0.11)
   .join('');
 /** Two soft streaks of sky light across the glass, falling from the sun's side. */
 const STREAKS = [
-  poly([[228, 30], [246, 30], [206, 200], [188, 200]], true),
-  poly([[262, 30], [269, 30], [229, 200], [222, 200]], true),
+  poly([[250, 30], [268, 30], [228, 200], [210, 200]], true),
+  poly([[284, 30], [291, 30], [251, 200], [244, 200]], true),
 ];
 
 /**
@@ -374,9 +378,9 @@ const FORM = (() => {
 const formOffset = (x: number) => r2((x - TOWER_LEFT) / (TOWER_RIGHT - TOWER_LEFT));
 
 /** The open floor of white columns under the glass, on the podium's roof. */
-const PODIUM_TOP = 197;
+const PODIUM_TOP = 203;
 /** Where the street level ends, just above the week band. */
-const GROUND = 223;
+const GROUND = 229;
 const footY = (x: number) => {
   const i = Math.max(1, FOOT_RUN.findIndex(([fx]) => fx >= x));
   const [a, b] = [FOOT_RUN[i - 1], FOOT_RUN[Math.min(i, FOOT_RUN.length - 1)]];
@@ -402,15 +406,15 @@ const merge = (trees: ReturnType<typeof tree>[]) => ({
   front: trees.map((t) => t.front).join(''),
   light: trees.map((t) => t.light).join(''),
 });
-const ROOF_TREES = merge([tree(298, 193.2, 0.8)]);
-const STREET_TREES = merge([tree(352, 216, 1.3), tree(371, 217.5, 1.05), tree(390, 215.5, 1.35)]);
+const ROOF_TREES = merge([tree(330, 199.2, 0.8)]);
+const STREET_TREES = merge([tree(371, 222, 1.3), tree(389, 221.5, 1.2)]);
 
 /**
  * The podium, after the photos: a long low block of dark glass with lighter panes in uneven strips under a grey
  * fascia, its left end rounded, the yellow banner near its right end. Behind it on the right a wing of glass fins,
  * Thiskyhall's grey striped block above that. It starts under the tower, leaving the month's chevron on sky.
  */
-const PODIUM = { x0: 207, x1: 300, fascia: 2.8 };
+const PODIUM = { x0: 229, x1: 332, fascia: 2.8 };
 const PODIUM_BODY = `M${PODIUM.x0} ${GROUND}V${PODIUM_TOP + 4}Q${PODIUM.x0} ${PODIUM_TOP} ${PODIUM.x0 + 4} ${PODIUM_TOP}H${PODIUM.x1}V${GROUND}Z`;
 const FASCIA = `M${PODIUM.x0} ${PODIUM_TOP + PODIUM.fascia}V${PODIUM_TOP + 4}Q${PODIUM.x0} ${PODIUM_TOP} ${PODIUM.x0 + 4} ${PODIUM_TOP}H${PODIUM.x1}V${PODIUM_TOP + PODIUM.fascia}Z`;
 const PODIUM_EDGE = box(PODIUM.x0 + 3, PODIUM_TOP, PODIUM.x1 - PODIUM.x0 - 3, 0.7);
@@ -421,62 +425,62 @@ const PANES = (() => {
   for (let i = 0; x < PODIUM.x1 - 2; i++) {
     const h = hash(i, 3, 5);
     const w = 1.2 + (h % 4) * 0.7;
-    if (h % 3) out.push(box(x, PODIUM_TOP + PODIUM.fascia + 0.8, w, 211.8 - PODIUM_TOP - PODIUM.fascia - 0.8 - ((h >>> 4) % 3) * 1.4));
+    if (h % 3) out.push(box(x, PODIUM_TOP + PODIUM.fascia + 0.8, w, 217.8 - PODIUM_TOP - PODIUM.fascia - 0.8 - ((h >>> 4) % 3) * 1.4));
     x += w + 1.4 + ((h >>> 8) % 3) * 1.1;
   }
   return out.join('');
 })();
 const PODIUM_MULLIONS = steps(PODIUM.x0 + 4, PODIUM.x1, 4.2)
-  .map((x) => box(x, PODIUM_TOP + PODIUM.fascia, 0.35, 212 - PODIUM_TOP - PODIUM.fascia))
+  .map((x) => box(x, PODIUM_TOP + PODIUM.fascia, 0.35, 218 - PODIUM_TOP - PODIUM.fascia))
   .join('');
-const BANNER = { x: 281, y: PODIUM_TOP + PODIUM.fascia, w: 4.4, h: 10 };
+const BANNER = { x: 313, y: PODIUM_TOP + PODIUM.fascia, w: 4.4, h: 10 };
 const BANNER_INK = box(BANNER.x + 1, BANNER.y + 2.2, BANNER.w - 2, 0.6) + box(BANNER.x + 1, BANNER.y + 3.6, BANNER.w - 2, 0.6) + box(BANNER.x + 1.6, BANNER.y + 5, BANNER.w - 3.2, 0.6);
 const BANNER_TAIL = `M${BANNER.x} ${BANNER.y + BANNER.h}l${BANNER.w / 2} -1.4l${BANNER.w / 2} 1.4Z`;
-const WING = { x0: 299.5, x1: 346, top: 200.5 };
+const WING = { x0: 331.5, x1: 378, top: 206.5 };
 const WING_BODY = box(WING.x0, WING.top, WING.x1 - WING.x0, GROUND - WING.top);
 const WING_EDGE = box(WING.x0, WING.top, WING.x1 - WING.x0, 0.7);
 const WING_FINS = steps(WING.x0 + 2, WING.x1, 2.6)
   .map((x) => box(x, WING.top + 0.7, 0.45, GROUND - WING.top - 0.7))
   .join('');
-const HALL = { x0: 303, x1: 340, top: 193 };
+const HALL = { x0: 335, x1: 372, top: 199 };
 const HALL_BODY = box(HALL.x0, HALL.top, HALL.x1 - HALL.x0, WING.top - HALL.top);
 const HALL_STRIPES = steps(HALL.top + 1.8, WING.top, 2)
   .map((y) => box(HALL.x0, y, HALL.x1 - HALL.x0, 0.6))
   .join('');
 
 /** Street level: the white canopy with the gold Thisofic sign over the lobby on the left, shops to the right. */
-const STREET_TOP = 212;
-const CANOPY = { x0: 205, x1: 248, y: 212.2, h: 2.2 };
+const STREET_TOP = 218;
+const CANOPY = { x0: 227, x1: 270, y: 218.2, h: 2.2 };
 const CANOPY_BODY = box(CANOPY.x0, CANOPY.y, CANOPY.x1 - CANOPY.x0, CANOPY.h);
 const CANOPY_SHADE = box(CANOPY.x0 + 1, CANOPY.y + CANOPY.h, CANOPY.x1 - CANOPY.x0 - 2, 0.8);
-const SIGN = { x: 217, y: CANOPY.y + 0.4, w: 15, h: 1.4 };
+const SIGN = { x: 239, y: CANOPY.y + 0.4, w: 15, h: 1.4 };
 const LOBBY = box(PODIUM.x0, CANOPY.y + CANOPY.h, CANOPY.x1 - PODIUM.x0, GROUND - CANOPY.y - CANOPY.h);
 const LOBBY_FRAMES = steps(PODIUM.x0 + 4.5, CANOPY.x1 - 1, 5.2)
   .map((x) => box(x, CANOPY.y + CANOPY.h, 0.5, GROUND - CANOPY.y - CANOPY.h))
   .join('');
-const CANOPY_POSTS = box(209, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h) + box(244.5, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h);
+const CANOPY_POSTS = box(231, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h) + box(266.5, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h);
 const STOREFRONT = box(CANOPY.x1, STREET_TOP, PODIUM.x1 - CANOPY.x1, GROUND - STREET_TOP);
 const STORE_MULLIONS = steps(CANOPY.x1 + 2.5, PODIUM.x1, 3.6)
   .map((x) => box(x, STREET_TOP + 0.6, 0.4, GROUND - STREET_TOP - 0.6))
   .join('');
 const STORE_AWNING = box(CANOPY.x1, STREET_TOP, PODIUM.x1 - CANOPY.x1, 0.9);
 /** Flags on white poles in front of the shops: the national flag's red between the company colours. */
-const FLAG_XS = steps(253, 296, 7);
+const FLAG_XS = steps(275, 328, 7);
 const FLAG_COLORS = ['#DA251D', '#F5C518', '#2F6FE0', '#DA251D', '#2BAE66', '#9B59D0', '#DA251D'];
-const POLES = FLAG_XS.map((x) => box(x, 212.6, 0.45, GROUND - 212.6)).join('');
-const FLAGS = FLAG_XS.map((x, i) => ({ color: FLAG_COLORS[i % FLAG_COLORS.length], d: `M${x + 0.45} 213h2.6v3.6l-1.3 -0.8l-1.3 0.8Z` }));
+const POLES = FLAG_XS.map((x) => box(x, 218.6, 0.45, GROUND - 218.6)).join('');
+const FLAGS = FLAG_XS.map((x, i) => ({ color: FLAG_COLORS[i % FLAG_COLORS.length], d: `M${x + 0.45} 219h2.6v3.6l-1.3 -0.8l-1.3 0.8Z` }));
 /** A low clipped hedge along the street, bumps of two sizes. */
 const HEDGE = (() => {
-  const bumps = steps(150, 352, 5);
-  return `M150 ${GROUND + 1}` + bumps.map((x, i) => `C${r2(x + 0.4)} ${r2(GROUND - 3.6 - (i % 3 === 1 ? 0.8 : 0))} ${r2(x + 4.6)} ${r2(GROUND - 3.6 - (i % 3 === 1 ? 0.8 : 0))} ${r2(x + 5)} ${GROUND - 0.6}`).join('') + `V${GROUND + 1}Z`;
+  const bumps = steps(172, 384, 5);
+  return `M172 ${GROUND + 1}` + bumps.map((x, i) => `C${r2(x + 0.4)} ${r2(GROUND - 3.6 - (i % 3 === 1 ? 0.8 : 0))} ${r2(x + 4.6)} ${r2(GROUND - 3.6 - (i % 3 === 1 ? 0.8 : 0))} ${r2(x + 5)} ${GROUND - 0.6}`).join('') + `V${GROUND + 1}Z`;
 })();
 
 /**
  * The white robot standing left of the canopy, in front of the podium's curved end, drawn on a 40 × 44 grid (feet at
  * 44) and scaled down: a wide head with two pointed fins and round ears, a dark visor with big cyan eyes, a round body
- * with the blue emblem, arms down. It fills the gap right of the year and below the month's chevron.
+ * with the blue emblem, arms down. With the complex moved right it stands clear of the month's chevron.
  */
-const ROBOT = { x: 188, s: 0.45 };
+const ROBOT = { x: 214, s: 0.45 };
 const ROBOT_Y = GROUND - 44 * ROBOT.s;
 const ROBOT_TRANSFORM = `translate(${ROBOT.x} ${r2(ROBOT_Y)}) scale(${ROBOT.s})`;
 const ROBOT_EARS = disc(2.2, 15, 3.4) + disc(37.8, 15, 3.4);
@@ -519,8 +523,8 @@ const LIT = (() => {
 /** Night windows lower down: the podium's panes, the wing and the shops. */
 const GROUND_LIT = (() => {
   const lit: string[] = [];
-  steps(302, 344, 2.6).forEach((x, i) => {
-    if (hash(i, 2, 11) % 4 === 0) lit.push(box(x + 0.6, 203, 1.5, 8));
+  steps(334, 376, 2.6).forEach((x, i) => {
+    if (hash(i, 2, 11) % 4 === 0) lit.push(box(x + 0.6, 209, 1.5, 8));
   });
   steps(CANOPY.x1 + 0.6, PODIUM.x1 - 2, 3.6).forEach((x) => lit.push(box(x + 0.5, STREET_TOP + 2, 2.6, GROUND - STREET_TOP - 3)));
   return lit.join('');

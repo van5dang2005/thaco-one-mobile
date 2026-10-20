@@ -160,47 +160,59 @@ export function roomHours(room: Pick<RoomDto, 'openedAt' | 'closedAt'> | null | 
   return { open: Math.min(open + offset, 24 * 60), close: Math.min(close + offset, 24 * 60) };
 }
 
+/** The unit before a room's own name: "MAZDA _Phòng họp 1", "XN Bò - Phòng họp 01". */
+const UNIT_CUT = /_|\s[-–]\s/;
+
+/** A name in capitals ("NAY PYI TAW", "HANOI") in title case, which reads better and fits a column; codes ("VIP") stay. */
+function softenCaps(name: string): string {
+  if (/\d/.test(name) || name !== name.toUpperCase() || name === name.toLowerCase()) return name;
+  const words = name.split(/\s+/);
+  if (words.length < 2 && name.length < 5) return name;
+  return words.map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+}
+
 /**
- * How a room heads its column: a small group line over a short name. A brand before "_" is the group
- * ("MAZDA _Phòng họp 1" → MAZDA / 1); then the leading words every name shares drop out ("Phòng họp 18.1",
- * "Phòng họp 18.2" → 18.1, 18.2) and, where there is no brand, become the group (Phòng họp / 18.1). Names stay whole
- * with a single room, or when one name is nothing but the shared words.
- *
- * When the names do not all start alike (Chu Lai: "Phòng họp 1.1"…, "Hội trường 01", "Phòng Khánh tiết"), each takes
- * the longest start it shares with another room (Phòng họp / 1.1, Phòng / Khánh tiết), or else its trailing number
- * (Hội trường / 01). A name that is all start, or a lone word, stays whole.
+ * How a room heads its column: a small group line over a short name. A unit before "_" or " - " is the group
+ * ("MAZDA _Phòng họp 1" → MAZDA / 1, "XN Bò - Phòng Hội nghị" → XN Bò / Hội nghị). Each name then drops the longest
+ * start it shares with another room, when both go on past it ("Phòng họp 18.1", "Phòng họp 18.2" → 18.1, 18.2;
+ * "Phòng Khánh tiết" beside them → Khánh tiết), and without a unit that start becomes the group (Phòng họp / 18.1,
+ * Phòng / Khánh tiết). A name sharing no start keeps its trailing number apart (Hội trường / 01); a name that is all
+ * start ("Phòng họp" beside "Phòng họp VIP"), a lone word, or the only room stays whole. A name in capitals
+ * goes to title case ("NAY PYI TAW" → Nay Pyi Taw).
  */
 export function roomLabels(rooms: Pick<RoomDto, 'id' | 'name'>[]): Record<string, { group: string; name: string }> {
   const parts = rooms.map((r) => {
     const full = (r.name ?? '').trim();
-    const cut = full.indexOf('_');
-    return cut > 0 ? { group: full.slice(0, cut).trim(), rest: full.slice(cut + 1).trim() } : { group: '', rest: full };
+    const cut = UNIT_CUT.exec(full);
+    const rest = cut ? full.slice(cut.index + cut[0].length).trim() : '';
+    return cut && cut.index > 0 && rest ? { group: full.slice(0, cut.index).trim(), rest } : { group: '', rest: full };
   });
   const words = parts.map((p) => p.rest.split(/\s+/).filter(Boolean));
-  const sameStart = (a: string[], b: string[]) => {
+  const named = words.filter((w) => w.length).length;
+  /** Leading words two names share, if both go on past them. */
+  const sharedStart = (a: string[], b: string[]) => {
     let n = 0;
     while (n < a.length && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++;
-    return n;
+    return n < a.length && n < b.length ? n : 0;
   };
-  let shared = 0;
-  while (rooms.length > 1 && words.every((w) => shared < w.length && w[shared].toLowerCase() === words[0][shared].toLowerCase())) shared++;
-  const mixed = shared === 0 && words.filter((w) => w.length).length > 1;
-  if (words.some((w) => w.length === shared)) shared = 0;
-  const common = shared ? words[0].slice(0, shared).join(' ') : '';
-  /** Mixed names: how many leading words of room `i` make its group. */
-  const ownLead = (i: number) => {
+  /** How many leading words of room `i` make its group. */
+  const lead = (i: number) => {
     const w = words[i];
-    const best = Math.max(0, ...words.map((other, j) => (j === i ? 0 : sameStart(w, other))));
-    if (best >= w.length) return 0;
-    if (best > 0) return best;
+    if (named < 2) return 0;
+    const best = Math.max(0, ...words.map((other, j) => (j === i ? 0 : sharedStart(w, other))));
+    if (best) return best;
     return w.length > 1 && /\d/.test(w[w.length - 1]) ? w.length - 1 : 0;
   };
+  /** One spelling per group, the first room's ("phòng Họp nhỏ" joins "Phòng họp lớn"). */
+  const spelling = new Map<string, string>();
   return Object.fromEntries(
     rooms.map((r, i) => {
-      const lead = shared || (mixed ? ownLead(i) : 0);
-      if (!lead) return [r.id, { group: parts[i].group, name: parts[i].rest }];
-      const rest = words[i].slice(lead).join(' ');
-      return [r.id, { group: parts[i].group || common || words[i].slice(0, lead).join(' '), name: rest.charAt(0).toUpperCase() + rest.slice(1) }];
+      const n = lead(i);
+      if (!n) return [r.id, { group: parts[i].group, name: softenCaps(parts[i].rest) }];
+      const start = words[i].slice(0, n).join(' ');
+      if (!spelling.has(start.toLowerCase())) spelling.set(start.toLowerCase(), start);
+      const rest = words[i].slice(n).join(' ');
+      return [r.id, { group: parts[i].group || spelling.get(start.toLowerCase())!, name: rest.charAt(0).toUpperCase() + rest.slice(1) }];
     }),
   );
 }

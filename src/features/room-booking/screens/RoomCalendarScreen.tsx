@@ -43,25 +43,22 @@ import { BOOKING_HOURS } from '../utils/availability';
 import { bookingFrom, bookingPhase, bookingTo, roomDayBlocks, roomHours, type TimelineBlock } from '../utils/booking';
 import { weekStartOf } from '../utils/myMeetings';
 
-type Mode = 'day' | 'week';
-
 /** Durations offered by the quick-book chips, in minutes. */
 const DURATIONS = [30, 60, 90, 120];
 
-/**
- * Gap between the toolbar and the area, where the header's picture shows: 28pt on today's phones, down to 10pt on a
- * 667pt-tall screen (iPhone SE), so a short screen keeps its hours for the schedule.
- */
 /** Backdrop of the week band: the header's own blue (navy at night), deepened, over the picture. */
 const WEEK_BAND = { light: 'rgba(0, 48, 100, 0.62)', dark: 'rgba(5, 11, 22, 0.66)' };
 
-const pictureGap = (windowHeight: number) => Math.round(Math.min(28, Math.max(10, 10 + (windowHeight - 667) / 6)));
+/**
+ * Gap between the toolbar and the area, where the header's picture shows: 68pt on today's phones, down to 14pt on a
+ * 667pt-tall screen (iPhone SE), so a short screen keeps its hours for the schedule.
+ */
+const pictureGap = (windowHeight: number) => Math.round(Math.min(68, Math.max(14, 14 + (windowHeight - 667) / 3)));
 
 /**
- * 3a: rooms × hours for one day (or the week as an agenda). Tap an empty slot to book it. The header is a picture of
- * an office district, by day or by night with the theme (`CalendarHeaderArt`): Back, the title and "Đặt phòng" on
- * top, the picture between them and the area picker, the month as the headline under it beside Ngày / Tuần, then the
- * week on a frosted band between ‹ ›. The schedule fills a square-cornered panel edge to edge below (rounded corners
+ * 3a: rooms × hours for one day. Tap an empty slot to book it. The header is a picture of the office, by day or by
+ * night with the theme (`CalendarHeaderArt`): Back, the title and "Đặt phòng" on top, the picture between them and the
+ * area picker, the month as the headline under it, then the week on a frosted band between ‹ ›. The schedule fills a square-cornered panel edge to edge below (rounded corners
  * clipped the last room's head): white paper with a column per room.
  */
 export function RoomCalendarScreen() {
@@ -79,7 +76,6 @@ export function RoomCalendarScreen() {
   const areaId = areaChoice ?? defaultAreaId;
   const today = todayKey(now);
   const [dateKey, setDateKey] = useState<DateKey>(params.date ?? today);
-  const [mode, setMode] = useState<Mode>('day');
   const [datePicker, setDatePicker] = useState(false);
   const [selection, setSelection] = useState<SlotSelection | null>(null);
   const [cluster, setCluster] = useState<BookingDto[] | null>(null);
@@ -93,7 +89,7 @@ export function RoomCalendarScreen() {
   const rooms = useRooms(areaId);
   const crossLevel = useCrossLevel();
   const levels = useApprovalLevels();
-  // The shown week: week agenda and the dots of the strip.
+  // The shown week: the dots of the strip, and the grid until the day answers.
   const schedule = useSchedule({
     fromDate: atMinutes(weekStart, 0).toISOString(),
     toDate: atMinutes(addDays(weekStart, 7), 0).toISOString(),
@@ -106,7 +102,7 @@ export function RoomCalendarScreen() {
       toDate: atMinutes(addDays(dateKey, 1), 0).toISOString(),
       areaId,
     },
-    mode === 'day',
+    true,
     { staleTime: 0 },
   );
 
@@ -135,7 +131,7 @@ export function RoomCalendarScreen() {
     setDateKey(key);
     setSelection(null);
   };
-  const shift = (direction: 1 | -1) => selectDay(addDays(dateKey, direction * (mode === 'week' ? 7 : 1)));
+  const shift = (direction: 1 | -1) => selectDay(addDays(dateKey, direction));
 
   const takenBlocks = (room: RoomDto) =>
     // Waiting requests only block rooms that refuse overlapping bookings.
@@ -256,18 +252,12 @@ export function RoomCalendarScreen() {
         </Text>
         <Icon icon={ChevronDownIcon} size={14} weight="bold" rawColor={onBlue(0.75)} />
       </Pressable>
-      <View className="mt-2 flex-row items-center justify-between gap-3">
+      <View className="mt-2 flex-row">
         <MonthTitle dateKey={dateKey} onPress={() => setDatePicker(true)} />
-        <ModeSwitch
-          mode={mode}
-          onChange={(m) => {
-            setMode(m);
-            setSelection(null);
-          }}
-        />
       </View>
       {/* The week on a deep frosted band: the towers only show faintly through it, so the dates (weekends at 45%) stay clear. */}
-      <View className="mt-4 flex-row items-center rounded-[16px] p-1" style={{ backgroundColor: scheme === 'dark' ? WEEK_BAND.dark : WEEK_BAND.light, borderWidth: 1, borderColor: onBlue(0.16) }}>
+      {/* The area and month sit close over the band; the robot stands right of the month's ⌄ (CalendarHeaderArt). */}
+      <View className="mt-3.5 flex-row items-center rounded-[16px] p-1" style={{ backgroundColor: scheme === 'dark' ? WEEK_BAND.dark : WEEK_BAND.light, borderWidth: 1, borderColor: onBlue(0.16) }}>
         <Pressable accessibilityRole="button" accessibilityLabel={t('rooms.previousDay')} onPress={() => shift(-1)} hitSlop={4} className="h-14 w-7 items-center justify-center active:opacity-60">
           <Icon icon={ChevronLeftIcon} size={17} weight="bold" rawColor={onBlue(0.8)} />
         </Pressable>
@@ -355,23 +345,6 @@ export function RoomCalendarScreen() {
       <View className="p-4">
         <EmptyState icon={DoorOpenIcon} message={t('rooms.noRooms')} />
       </View>
-    ) : mode === 'week' ? (
-      <ScrollView contentContainerStyle={{ paddingBottom: scrollBottom }}>
-        <WeekAgenda
-          weekStart={weekStart}
-          today={today}
-          now={now}
-          bookings={weekBookings}
-          rooms={roomList}
-          title={visibleTitle}
-          isMine={involved}
-          onOpen={(b) => router.push({ pathname: '/rooms/bookings/[id]', params: { id: b.id } })}
-          onPickDay={(day) => {
-            setMode('day');
-            selectDay(day);
-          }}
-        />
-      </ScrollView>
     ) : (
       <>
         {daySchedule.isError ? <ErrorState compact error={daySchedule.error} onRetry={() => void daySchedule.refetch()} /> : null}
@@ -442,42 +415,6 @@ function GlassButton({ icon, label, onPress, testID }: { icon: AppIcon; label: s
   );
 }
 
-/**
- * Ngày / Tuần on the picture: black 14% track like HeaderSegmented by day, frosted like the week band at night (black
- * vanishes on the night sky); the selected segment white with header-blue text, like the selected day.
- */
-function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const { t } = useTranslation();
-  const { colors, scheme } = useTheme();
-  const { fg, soft } = useHeaderColors();
-  return (
-    <View
-      className="h-7 flex-row rounded-full p-[2px]"
-      style={scheme === 'dark' ? { backgroundColor: onBlue(0.1), borderWidth: 1, borderColor: onBlue(0.16) } : { backgroundColor: 'rgba(0, 0, 0, 0.14)' }}
-    >
-      {(['day', 'week'] as const).map((m) => {
-        const active = m === mode;
-        return (
-          <Pressable
-            key={m}
-            testID={`rooms-mode-${m}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(m)}
-            hitSlop={{ top: 8, bottom: 8 }}
-            className="justify-center rounded-full px-2.5 active:opacity-80"
-            style={active ? [shadows.raised, { backgroundColor: fg }] : undefined}
-          >
-            <Text weight={active ? 'bold' : 'semibold'} style={{ fontSize: 11.5, lineHeight: 14, color: active ? colors.header : soft }}>
-              {m === 'day' ? t('rooms.dayMode') : t('rooms.weekMode')}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 /** The month as the header's headline: "Tháng 10" with the year lighter beside it; opens the date picker. */
 function MonthTitle({ dateKey, onPress }: { dateKey: DateKey; onPress: () => void }) {
   const { t } = useTranslation();
@@ -501,83 +438,6 @@ function MonthTitle({ dateKey, onPress }: { dateKey: DateKey; onPress: () => voi
       </Text>
       <Icon icon={ChevronDownIcon} size={16} weight="bold" rawColor={onBlue(0.7)} />
     </Pressable>
-  );
-}
-
-type WeekAgendaProps = {
-  weekStart: DateKey;
-  today: DateKey;
-  now: Date;
-  bookings: BookingDto[];
-  rooms: RoomDto[];
-  title: (b: BookingDto) => string;
-  isMine: (b: BookingDto) => boolean;
-  onOpen: (b: BookingDto) => void;
-  /** The date on the left, or an empty day: that day in Ngày mode. */
-  onPickDay: (day: DateKey) => void;
-};
-
-/** Week mode: a date rail on the left (today on a blue disc), each day's bookings as cards in time order on the right. */
-function WeekAgenda({ weekStart, today, now, bookings, rooms, title, isMine, onOpen, onPickDay }: WeekAgendaProps) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const roomIds = new Set(rooms.map((r) => r.id.toLowerCase()));
-  return (
-    <>
-      {days.map((day, index) => {
-        const items = bookings
-          .filter((b) => toDateKey(bookingFrom(b) ?? new Date(0)) === day && roomIds.has(String(b.roomId ?? b.room?.id ?? '').toLowerCase()))
-          .sort((a, b) => (a.from ?? '').localeCompare(b.from ?? ''));
-        const isToday = day === today;
-        const past = day < today;
-        const weekday = String(weekdayOf(day)) as '0';
-        return (
-          <View key={day} testID={`rooms-week-${day}`} className={cn('flex-row gap-3 px-4 py-3', index > 0 && 'border-t border-line-2')}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${isToday ? t('rooms.today') : t(`time.weekday.${weekday}`)}, ${formatKey(day)}`}
-              accessibilityHint={t('rooms.openDay')}
-              onPress={() => onPickDay(day)}
-              hitSlop={4}
-              className="w-10 items-center gap-1 active:opacity-70"
-            >
-              <Text weight="semibold" maxFontSizeMultiplier={1.2} style={{ fontSize: 11, lineHeight: 14, color: isToday ? colors.primary : colors.muted }}>
-                {t(`time.weekdayShort.${weekday}`)}
-              </Text>
-              <View className="h-9 w-9 items-center justify-center rounded-full" style={isToday ? [shadows.primary, { backgroundColor: colors.primary }] : undefined}>
-                <Text numeric weight="bold" maxFontSizeMultiplier={1.2} style={{ fontSize: 17, lineHeight: 22, color: isToday ? colors['on-primary'] : past ? colors.subtle : colors.ink }}>
-                  {String(parseDateKey(day).day)}
-                </Text>
-              </View>
-            </Pressable>
-            <View className="min-w-0 flex-1 gap-2 pt-0.5">
-              {items.length ? (
-                items.map((b) => <AgendaCard key={b.id} booking={b} title={title(b)} mine={isMine(b)} now={now} onPress={() => onOpen(b)} />)
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => onPickDay(day)}
-                  className="h-11 flex-row items-center gap-2 rounded-[12px] border border-dashed border-line px-3 active:opacity-70"
-                >
-                  <Text className="flex-1 text-subtle" style={{ fontSize: 12.5, lineHeight: 16 }}>
-                    {t('rooms.noBookingsDay')}
-                  </Text>
-                  {past ? null : (
-                    <>
-                      <Text weight="semibold" className="text-primary" style={{ fontSize: 12.5, lineHeight: 16 }}>
-                        {t('rooms.openDay')}
-                      </Text>
-                      <Icon icon={ChevronRightIcon} size={14} weight="bold" color="primary" />
-                    </>
-                  )}
-                </Pressable>
-              )}
-            </View>
-          </View>
-        );
-      })}
-    </>
   );
 }
 

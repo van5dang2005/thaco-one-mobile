@@ -49,11 +49,12 @@ export function useGroupTone(group: ModuleGroup) {
 
 /**
  * Dark mode: shadows vanish on the near-black home page, so home cards get a hairline with a lit top
- * edge to read as raised. Light mode keeps the plain card.
+ * edge to read as raised. Light mode keeps the plain card, with the width set to 0 rather than dropped: on Android a
+ * removed borderWidth leaves a rounded `overflow-hidden` card (Card) clipping all its content after dark → light.
  */
-export function useHomeCardEdge(): ViewStyle | null {
+export function useHomeCardEdge(): ViewStyle {
   const { scheme } = useTheme();
-  return scheme === 'dark' ? { borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderTopColor: 'rgba(255, 255, 255, 0.17)' } : null;
+  return scheme === 'dark' ? { borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderTopColor: 'rgba(255, 255, 255, 0.17)' } : { borderWidth: 0 };
 }
 
 /** Dark mode: a wash of the group color from the card's top-right corner (the header circles, in color). */
@@ -131,7 +132,8 @@ export function ModuleTile({ module, count, onOpen }: { module: HomeModule; coun
         <ModuleIcon module={module} size={22} color={tone.icon} />
         <TileMarker module={module} count={count} className="-right-1.5 -top-1.5" />
       </View>
-      <Text weight="medium" numberOfLines={2} maxFontSizeMultiplier={1.2} className="text-center text-ink" style={{ fontSize: 12, lineHeight: 15 }}>
+      {/* Tile-wide, not text-wide: Android re-lays a re-coloured label (theme switch) a hair narrower than it measured, and "Văn thư" lost "thư". */}
+      <Text weight="medium" numberOfLines={2} maxFontSizeMultiplier={1.2} className="self-stretch text-center text-ink" style={{ fontSize: 12, lineHeight: 15 }}>
         {label(module, true)}
       </Text>
     </Pressable>

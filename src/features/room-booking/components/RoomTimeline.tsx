@@ -734,18 +734,29 @@ function RoomHead({ room, label, width, first, blocks, locked, selected, isToday
         backgroundColor: selected ? withAlpha(colors.primary, scheme === 'dark' ? 0.07 : 0.035) : undefined,
       }}
     >
-      <Text
-        weight="bold"
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
-        maxFontSizeMultiplier={1.1}
-        style={{ fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: selected ? withAlpha(colors.primary, 0.75) : colors.subtle }}
-      >
-        {label.group.toUpperCase()}
-      </Text>
+      {label.group ? (
+        <Text
+          weight="bold"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+          maxFontSizeMultiplier={1.1}
+          style={{ fontSize: 10, lineHeight: 13, letterSpacing: 0.6, color: selected ? withAlpha(colors.primary, 0.75) : colors.subtle }}
+        >
+          {label.group.toUpperCase()}
+        </Text>
+      ) : (
+        // No group line (Thiso Myanmar's city names): the lock and seats go up here, so the name has the whole width.
+        <View className="h-[13px] flex-row items-center gap-[3px]">
+          {locked ? <Icon icon={LockIcon} size={11} weight="bold" color="subtle" /> : null}
+          <Icon icon={UsersIcon} size={11} color="subtle" />
+          <Text numeric weight="medium" maxFontSizeMultiplier={1.1} className="text-subtle" style={{ fontSize: 11, lineHeight: 13 }}>
+            {String(room.numberOfSeats ?? 0)}
+          </Text>
+        </View>
+      )}
       <View className="flex-row items-center gap-1">
-        {locked ? <Icon icon={LockIcon} size={13} weight="bold" color="subtle" /> : null}
+        {locked && label.group ? <Icon icon={LockIcon} size={13} weight="bold" color="subtle" /> : null}
         <Text
           weight="bold"
           numberOfLines={1}
@@ -757,12 +768,14 @@ function RoomHead({ room, label, width, first, blocks, locked, selected, isToday
         >
           {label.name}
         </Text>
-        <View className="ml-auto flex-row items-center gap-[3px] pl-0.5">
-          <Icon icon={UsersIcon} size={11} color="subtle" />
-          <Text numeric weight="medium" maxFontSizeMultiplier={1.1} className="text-subtle" style={{ fontSize: 11, lineHeight: 14 }}>
-            {String(room.numberOfSeats ?? 0)}
-          </Text>
-        </View>
+        {label.group ? (
+          <View className="ml-auto flex-row items-center gap-[3px] pl-0.5">
+            <Icon icon={UsersIcon} size={11} color="subtle" />
+            <Text numeric weight="medium" maxFontSizeMultiplier={1.1} className="text-subtle" style={{ fontSize: 11, lineHeight: 14 }}>
+              {String(room.numberOfSeats ?? 0)}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <View className="mb-1.5 mt-px flex-row items-center gap-[5px]">
         <StatusDot color={tone.dot} live={busy} />

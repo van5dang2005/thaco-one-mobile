@@ -277,7 +277,8 @@ export function ProfileScreen() {
                   {profile.jobTitleName}
                 </Text>
               ) : null}
-              <View className="flex-row flex-wrap gap-1.5 pt-1">
+              {/* MSNV, then the unit on its own line (never beside the code). */}
+              <View className="items-start gap-1.5 pt-1">
                 {profile.employeeCode ? <HeaderTag mono label={profile.employeeCode} /> : null}
                 {org ? <HeaderTag label={org} /> : null}
               </View>

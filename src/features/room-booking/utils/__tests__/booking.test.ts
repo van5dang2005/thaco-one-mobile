@@ -19,6 +19,45 @@ describe('roomLabels', () => {
     });
   });
 
+  it('takes the unit before " - " as the group, then drops the start each room shares with another', () => {
+    expect(
+      roomLabels([
+        room('a', 'XN Bò - Phòng Hội nghị'),
+        room('b', 'XN Bò - Phòng họp 01'),
+        room('c', 'XNC Nam Kong 1 - Phòng họp nhỏ'),
+        room('d', 'XNC Nam Kong 1 - Phòng họp nhỏ 2'),
+        room('e', 'XNC NSA - Phòng họp NSA2'),
+      ]),
+    ).toEqual({
+      a: { group: 'XN Bò', name: 'Hội nghị' },
+      b: { group: 'XN Bò', name: '01' },
+      c: { group: 'XNC Nam Kong 1', name: 'Nhỏ' },
+      d: { group: 'XNC Nam Kong 1', name: 'Nhỏ 2' },
+      e: { group: 'XNC NSA', name: 'NSA2' },
+    });
+  });
+
+  it('keeps "Phòng họp" as the group when one room shares only "Phòng"', () => {
+    expect(roomLabels([room('a', 'Phòng họp 1.R1'), room('b', 'Phòng họp 2.A1'), room('c', 'Phòng Đào tạo')])).toEqual({
+      a: { group: 'Phòng họp', name: '1.R1' },
+      b: { group: 'Phòng họp', name: '2.A1' },
+      c: { group: 'Phòng', name: 'Đào tạo' },
+    });
+  });
+
+  it('splits off the unit of a single room but keeps its name whole', () => {
+    expect(roomLabels([room('a', 'VP Cảng - Phòng họp 1.2')])).toEqual({ a: { group: 'VP Cảng', name: 'Phòng họp 1.2' } });
+  });
+
+  it('puts whole names in capitals into title case, but keeps short codes', () => {
+    expect(roomLabels([room('a', 'HANOI'), room('b', 'NAY PYI TAW'), room('c', 'HO CHI MINH'), room('d', 'VIP')])).toEqual({
+      a: { group: '', name: 'Hanoi' },
+      b: { group: '', name: 'Nay Pyi Taw' },
+      c: { group: '', name: 'Ho Chi Minh' },
+      d: { group: '', name: 'VIP' },
+    });
+  });
+
   it('compares the shared words without case and capitalizes what is left', () => {
     expect(roomLabels([room('a', 'Phòng họp lớn'), room('b', 'phòng Họp nhỏ')])).toEqual({
       a: { group: 'Phòng họp', name: 'Lớn' },

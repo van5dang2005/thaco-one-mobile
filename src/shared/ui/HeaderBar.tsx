@@ -141,7 +141,7 @@ export function HeaderPillButton({ icon, label, onPress, caret, testID }: { icon
   );
 }
 
-/** Main action on the blue header: compact white 32pt pill with a primary glyph and label ("Thêm mới"). */
+/** Main action on the blue header: small white 28pt pill with a primary glyph and label ("Đặt phòng"). */
 export function HeaderActionButton({ icon, label, accessibilityLabel, onPress, testID }: { icon: AppIcon; label: string; accessibilityLabel?: string; onPress: () => void; testID?: string }) {
   const { colors } = useTheme();
   return (
@@ -150,12 +150,12 @@ export function HeaderActionButton({ icon, label, accessibilityLabel, onPress, t
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
-      hitSlop={{ top: 6, bottom: 6 }}
-      className="h-8 flex-row items-center justify-center gap-1 rounded-full pl-2 pr-3 active:opacity-70"
+      hitSlop={{ top: 8, bottom: 8 }}
+      className="h-7 flex-row items-center justify-center gap-0.5 rounded-full pl-2 pr-2.5 active:opacity-70"
       style={{ backgroundColor: colors['header-name'] }}
     >
-      <Icon icon={icon} size={14} weight="bold" rawColor={colors.header} />
-      <Text weight="bold" numberOfLines={1} maxFontSizeMultiplier={1.15} style={{ fontSize: 12.5, lineHeight: 16, color: colors.header }}>
+      <Icon icon={icon} size={12} weight="bold" rawColor={colors.header} />
+      <Text weight="bold" numberOfLines={1} maxFontSizeMultiplier={1.15} style={{ fontSize: 11.5, lineHeight: 14, color: colors.header }}>
         {label}
       </Text>
     </Pressable>

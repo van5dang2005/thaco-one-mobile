@@ -40,7 +40,9 @@ export function HeroCard({ showNextMeeting, onBook }: Props) {
       testID="home-hero"
       className="gap-3.5 overflow-hidden rounded-[24px] p-4"
       // Dark mode: deep navy instead of the near-black header color, with a lit top edge, so the card stands off the page.
-      style={[{ backgroundColor: colors.hero }, scheme === 'dark' ? { borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderTopColor: 'rgba(255, 255, 255, 0.18)' } : null]}
+      // Light sets the width to 0 rather than dropping it: on Android a removed borderWidth leaves this rounded clip
+      // empty and the whole card blank after switching dark → light.
+      style={[{ backgroundColor: colors.hero }, scheme === 'dark' ? { borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderTopColor: 'rgba(255, 255, 255, 0.18)' } : { borderWidth: 0 }]}
     >
       <HeaderCircles />
       <View className="flex-row items-center gap-3">
