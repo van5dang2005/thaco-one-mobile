@@ -51,7 +51,7 @@ export function StampQueueScreen() {
 function StampDocRow({ doc }: { doc: StampDoc }) {
   const { t } = useTranslation();
   return (
-    <Card testID={`stamp-${doc.soHieu}`} className="gap-1.5 p-3.5">
+    <Card testID={`stamp-${doc.id}`} className="gap-1.5 p-3.5">
       <View className="flex-row items-center gap-2">
         <Text mono weight="bold" numberOfLines={1} style={{ fontSize: 13.5, lineHeight: 18 }}>
           {doc.soHieu}
@@ -66,9 +66,11 @@ function StampDocRow({ doc }: { doc: StampDoc }) {
       <Text weight="semibold" numberOfLines={2} style={{ fontSize: 14, lineHeight: 20 }}>
         {doc.trichYeu}
       </Text>
-      <Text numberOfLines={1} className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
-        {t('documents.stamp.signer', { name: doc.nguoiKy.name, position: doc.nguoiKy.position })}
-      </Text>
+      {doc.nguoiKy ? (
+        <Text numberOfLines={1} className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+          {t('documents.stamp.signer', { name: doc.nguoiKy })}
+        </Text>
+      ) : null}
       <View className="mt-0.5 flex-row flex-wrap gap-2">
         <StatusBadge kind="wait" label={t(`documents.shared.kind.${doc.kind}`)} />
         {doc.tuEsign ? <StatusBadge kind="ok" label={t('documents.stamp.esign')} /> : null}

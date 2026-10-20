@@ -1,7 +1,8 @@
-import { todayKey, type DateKey } from '@/core/time/vn';
+import { diffDays, todayKey, type DateKey } from '@/core/time/vn';
 
-import type { IncomingDoc, SharedDoc, StampDoc } from '../types';
-import { deadlineOf, isOverdue } from './deadline';
+import type { DocTask, IncomingDoc, SharedDoc, StampDoc } from '../types';
+import { isOverdue } from './deadline';
+import { taskStage } from './tasks';
 
 /** Tabs of "Văn bản đến" (8c). */
 export type IncomingTab = 'phan_phoi' | 'xu_ly' | 'da_xu_ly';
@@ -19,7 +20,7 @@ export function needsDistribution(doc: IncomingDoc) {
 
 /**
  * "Chưa đọc" as on the web (`IsChuaDoc`, red row): I am one of its distributors, it is not processed or
- * cancelled, and I have not opened it. (The back-end also requires it stamped "đã nhận"; mobile lists only those.)
+ * cancelled, and I have not opened it (the back-end sets the flag only once it is stamped "đã nhận").
  */
 export function isUnreadIncoming(doc: IncomingDoc) {
   return doc.coThePhanPhoi && !doc.daXem && !doc.daHuy && doc.trangThai !== 'da_xu_ly';
@@ -75,7 +76,7 @@ export type DocumentSummary = {
   toStamp: number;
   toStampDi: number;
   toStampNoiBo: number;
-  /** Open processing past its deadline, and the worst delay in days. */
+  /** My open tasks past their deadline, and the worst delay in days. */
   overdue: number;
   worstOverdueDays: number;
   /** Shared documents still in force, and how many I have not opened. */
@@ -85,14 +86,18 @@ export type DocumentSummary = {
   pending: number;
 };
 
-export function documentSummary(incoming: readonly IncomingDoc[], shared: readonly SharedDoc[], stamp: readonly StampDoc[], today: DateKey = todayKey()): DocumentSummary {
+export function documentSummary(
+  incoming: readonly IncomingDoc[],
+  shared: readonly SharedDoc[],
+  stamp: readonly StampDoc[],
+  tasks: readonly DocTask[],
+  today: DateKey = todayKey(),
+): DocumentSummary {
   const distribute = incoming.filter(needsDistribution);
   const process = incoming.filter(needsMyProcessing);
-  const overdue = incoming.filter((d) => !d.daHuy && d.trangThai === 'dang_xu_ly' && !!d.vaiTro && isOverdue(d.han, today));
-  const worstOverdueDays = overdue.reduce((worst, d) => {
-    const deadline = deadlineOf(d.han, today);
-    return deadline?.state === 'overdue' ? Math.max(worst, deadline.days) : worst;
-  }, 0);
+  // As the "Quá hạn" tab of "Việc của tôi", which the counter opens.
+  const overdue = tasks.filter((task) => taskStage(task, today) === 'qua_han');
+  const worstOverdueDays = overdue.reduce((worst, task) => Math.max(worst, -diffDays(today, task.to)), 0);
   const live = shared.filter((d) => !d.daHuy);
   return {
     toHandle: distribute.length + process.length,

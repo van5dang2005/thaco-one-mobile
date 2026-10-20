@@ -1,6 +1,6 @@
-import { addDays, diffDays, parseDateKey, parseServerDate, toDateKey, todayKey, weekdayOf, type DateKey } from '@/core/time/vn';
+import { addDays, diffDays, parseDateKey, todayKey, weekdayOf, type DateKey } from '@/core/time/vn';
 
-import type { DocRole, DocTask, IncomingDoc } from '../types';
+import type { DocRole, DocTask } from '../types';
 import { DUE_SOON_DAYS } from './deadline';
 
 /** Tabs of "Việc của tôi" (8b). `tat_ca` also holds finished tasks. */
@@ -14,32 +14,6 @@ export function isTaskTab(value: unknown): value is TaskTab {
 
 /** Dot / stripe color of a task: its role while open, done once finished. */
 export type TaskTone = DocRole | 'done';
-
-/** The incoming documents I have a role in, as calendar tasks from distribution day to deadline. */
-export function tasksOf(docs: readonly IncomingDoc[]): DocTask[] {
-  return docs
-    .filter((d) => !!d.vaiTro && d.trangThai !== 'cho_phan_phoi' && d.trangThai !== 'bi_tra_lai')
-    .map((d) => {
-      const assigned = parseServerDate(d.phanPhoiLuc ?? null);
-      const from = assigned ? toDateKey(assigned) : d.ngayNhan;
-      const to = d.han && d.han >= from ? d.han : from;
-      return {
-        id: d.id,
-        docId: d.id,
-        soDen: d.soDen,
-        trichYeu: d.trichYeu,
-        role: d.vaiTro as DocRole,
-        from,
-        to,
-        hasDeadline: !!d.han,
-        // As the web calendar (`mauLoai = hoanTat`): finished once processed or once the chủ trì filed a result.
-        done: d.trangThai === 'da_xu_ly' || d.trangThai === 'khong_xu_ly' || !!d.ketQua?.trim(),
-        cancelled: !!d.daHuy,
-        chuTri: d.thanhPhan.filter((a) => a.role === 'chu_tri').map((a) => a.person.name).join(', ') || undefined,
-        nguoiPhanPhoi: d.nguoiPhanPhoi?.name,
-      };
-    });
-}
 
 /** The tab an open task belongs to (finished tasks only show under `tat_ca`). */
 export function taskStage(task: DocTask, today: DateKey = todayKey()): Exclude<TaskTab, 'tat_ca'> | 'hoan_thanh' {
@@ -122,6 +96,29 @@ export function monthWeeks(year: number, month: number): DateKey[][] {
   const weeks: DateKey[][] = [];
   for (let monday = weekOf(`${year}-${pad(month)}-01`)[0]; monday <= last; monday = addDays(monday, 7)) weeks.push(weekOf(monday));
   return weeks;
+}
+
+/** `yyyy-MM` of a day: the `Thang` of the calendar request. */
+export function monthOf(day: DateKey) {
+  return day.slice(0, 7);
+}
+
+/** Months the calendar shows days of: the one or two of the week strip, or the month grid with its padding days. */
+export function visibleMonths(day: DateKey, expanded: boolean): string[] {
+  const { year, month } = parseDateKey(day);
+  const days = expanded ? monthWeeks(year, month).flat() : weekOf(day);
+  return [...new Set(days.map(monthOf))];
+}
+
+/**
+ * The tasks of the loaded months, plus my open tasks past their deadline from the full list: a month's request
+ * leaves out a bar that ended before it, yet an overdue task stays on every day until it is closed. The same task
+ * loaded twice keeps the month's copy.
+ */
+export function withOverdue(monthTasks: readonly DocTask[], all: readonly DocTask[], today: DateKey = todayKey()): DocTask[] {
+  const ids = new Set(monthTasks.map((task) => task.id));
+  const overdue = all.filter((task) => !ids.has(task.id) && taskStage(task, today) === 'qua_han');
+  return [...new Map([...monthTasks, ...overdue].map((task) => [task.id, task])).values()];
 }
 
 /** Distinct tones of the tasks on `day`, in legend order, for the dots under a week cell. */

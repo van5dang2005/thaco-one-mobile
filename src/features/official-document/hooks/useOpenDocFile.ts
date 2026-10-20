@@ -6,8 +6,8 @@ import { toast } from '@/shared/ui/Toast';
 import type { DocFile } from '../types';
 
 /**
- * Opens a document file in the in-app browser (PDF and OnlyOffice previews render there). Mock files have no
- * URL yet: say so instead of failing silently.
+ * Opens a document file in the in-app browser (PDF, Word and Excel preview there; the API serves them without a
+ * token). A file I may not view has no URL: say so instead of failing silently.
  */
 export function useOpenDocFile() {
   const { t } = useTranslation();

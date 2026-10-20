@@ -1,8 +1,10 @@
-import type { DocPerson, IncomingDoc, SharedDoc, StampDoc } from '../types';
+import type { CongViecItemDto } from '../../api/dto';
+import type { DocPerson, IncomingDoc, SharedDoc, StampDoc } from '../../types';
+import { isTaskItem, taskFromItem } from '../mapping';
 
 /**
- * Seed data of the Văn thư mock (`officialDocument.api.ts`). The signed-in user is `me`, a staff member of
- * Ban CNTT who distributes some incoming documents and processes others. Texts are the design's copy.
+ * Test data in the design's copy. The signed-in user is `me`, a staff member of Ban CNTT who distributes some
+ * incoming documents and processes others.
  */
 
 const unit = 'Ban CNTT · THACO AUTO';
@@ -18,7 +20,7 @@ const bao: DocPerson = { id: 'nv-bao', name: 'Hoàng Gia Bảo', code: '0140256'
 const lan: DocPerson = { id: 'nv-lan', name: 'Ngô Thị Lan', code: '0097412', unit, position: 'Chuyên viên pháp chế', concurrent: true };
 const viet: DocPerson = { id: 'nv-viet', name: 'Bùi Quốc Việt', code: '0152038', unit, position: 'Kỹ sư phần mềm' };
 
-/** Staff the pickers search ("Tìm trong Ban CNTT"). */
+/** Staff the pickers search. */
 export const directory: DocPerson[] = [me, hung, tuan, ha, long, mai, bao, lan, viet];
 
 export const incomingSeed: IncomingDoc[] = [
@@ -35,7 +37,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'dang_xu_ly',
     vaiTro: 'chu_tri',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: true,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-10-14T09:20:00+07:00',
     yKienPhanPhoi: 'Ban CNTT chủ trì, phối hợp Ban An toàn lập kế hoạch kiểm tra hệ thống báo cháy tự động, báo cáo kết quả trước 20/10.',
     thanhPhan: [
@@ -61,6 +64,7 @@ export const incomingSeed: IncomingDoc[] = [
     quanTrong: false,
     trangThai: 'cho_phan_phoi',
     coThePhanPhoi: true,
+    coTheXuLy: false,
     thanhPhan: [],
     tep: [{ id: 'f-1250-1', name: '412-STTTT-BCVT.pdf', kind: 'pdf', size: '640 KB', description: 'Văn bản đóng dấu', pages: 2 }],
     daXem: false,
@@ -76,7 +80,8 @@ export const incomingSeed: IncomingDoc[] = [
     quanTrong: false,
     trangThai: 'bi_tra_lai',
     coThePhanPhoi: true,
-    nguoiPhanPhoi: me,
+    coTheXuLy: false,
+    nguoiPhanPhoi: me.name,
     phanPhoiLuc: '2026-10-13T15:40:00+07:00',
     yKienPhanPhoi: 'Đề nghị anh Long chủ trì rà soát ảnh hưởng tới hệ thống máy chủ.',
     thanhPhan: [{ person: long, role: 'chu_tri' }],
@@ -97,7 +102,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'dang_xu_ly',
     vaiTro: 'phoi_hop',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: false,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-10-13T10:30:00+07:00',
     yKienPhanPhoi: 'Anh Tuấn chủ trì, Khoa phối hợp chuẩn bị kịch bản diễn tập phần mạng.',
     thanhPhan: [
@@ -121,7 +127,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'dang_xu_ly',
     vaiTro: 'phoi_hop',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: false,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-10-05T08:10:00+07:00',
     yKienPhanPhoi: 'Chị Hà chủ trì tổng hợp, Khoa hỗ trợ xuất số liệu từ hệ thống nhân sự.',
     thanhPhan: [
@@ -147,7 +154,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'dang_xu_ly',
     vaiTro: 'de_biet',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: false,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-10-09T16:00:00+07:00',
     yKienPhanPhoi: 'Anh Tuấn tham dự, các anh chị để biết.',
     thanhPhan: [
@@ -171,7 +179,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'dang_xu_ly',
     vaiTro: 'de_biet',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: false,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-10-12T14:00:00+07:00',
     yKienPhanPhoi: 'Ban XNK chủ trì, Ban CNTT để biết để cập nhật quy trình trên hệ thống.',
     thanhPhan: [
@@ -194,7 +203,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'da_xu_ly',
     vaiTro: 'chu_tri',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: false,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-10-07T08:30:00+07:00',
     yKienPhanPhoi: 'Khoa chủ trì tổng hợp số liệu, gửi trước 12/10.',
     thanhPhan: [{ person: me, role: 'chu_tri' }],
@@ -216,7 +226,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'dang_xu_ly',
     vaiTro: 'phoi_hop',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: false,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-10-03T09:00:00+07:00',
     thanhPhan: [
       { person: tuan, role: 'chu_tri' },
@@ -239,7 +250,8 @@ export const incomingSeed: IncomingDoc[] = [
     trangThai: 'da_xu_ly',
     vaiTro: 'de_biet',
     coThePhanPhoi: false,
-    nguoiPhanPhoi: hung,
+    coTheXuLy: false,
+    nguoiPhanPhoi: hung.name,
     phanPhoiLuc: '2026-09-29T10:00:00+07:00',
     thanhPhan: [
       { person: ha, role: 'chu_tri' },
@@ -266,7 +278,7 @@ export const sharedSeed: SharedDoc[] = [
     daXem: false,
     daHuy: false,
     quyen: { xem: true, tai: false, chiaSe: true },
-    nguoiKy: { name: 'Nguyễn Hữu Phúc', position: 'Tổng Giám đốc' },
+    nguoiKy: 'Nguyễn Hữu Phúc',
     nguoiDuThao: 'Trần Minh Quân · Ban Nhân sự',
     doKhan: 'Thường',
     doMat: 'Thường',
@@ -276,11 +288,6 @@ export const sharedSeed: SharedDoc[] = [
       { id: 'f-312-2', name: 'Mau-dang-ky-lam-viec-tu-xa.xlsx', kind: 'xls', size: '21 KB', description: 'Biểu mẫu đăng ký' },
     ],
     phienBan: [{ id: 'f-312-v0', name: '312-QD-THACO-ban-goc.pdf', kind: 'pdf', size: '790 KB', description: 'Văn bản gốc trước đóng dấu', pages: 6 }],
-    daChiaSe: [
-      { person: long, quyen: { xem: true, tai: true, chiaSe: false } },
-      { person: tuan, quyen: { xem: true, tai: false, chiaSe: false } },
-      { person: hung, quyen: allPermissions },
-    ],
   },
   {
     id: 'vb-305',
@@ -294,14 +301,13 @@ export const sharedSeed: SharedDoc[] = [
     hanPhanHoi: '2026-10-20',
     daHuy: false,
     quyen: { xem: true, tai: true, chiaSe: false },
-    nguoiKy: { name: 'Phạm Văn Tài', position: 'Tổng Giám đốc THACO AUTO' },
+    nguoiKy: 'Phạm Văn Tài',
     nguoiDuThao: 'Lê Thị Hồng · Ban HCNS',
     doKhan: 'Thường',
     doMat: 'Thường',
     vanBan: { id: 'f-305-main', name: '305-TB-TCAUTO.pdf', kind: 'pdf', size: '410 KB', description: 'Văn bản đóng dấu', pages: 2 },
     tep: [],
     phienBan: [],
-    daChiaSe: [],
   },
   {
     id: 'vb-287',
@@ -314,14 +320,13 @@ export const sharedSeed: SharedDoc[] = [
     daXem: false,
     daHuy: false,
     quyen: allPermissions,
-    nguoiKy: { name: 'Lê Văn Hùng', position: 'Trưởng Ban CNTT' },
+    nguoiKy: 'Lê Văn Hùng',
     nguoiDuThao: 'Hoàng Gia Bảo · Ban CNTT',
     doKhan: 'Thường',
     doMat: 'Thường',
     vanBan: { id: 'f-287-main', name: '287-HD-CNTT.pdf', kind: 'pdf', size: '1,8 MB', description: 'Văn bản đóng dấu', pages: 12 },
     tep: [{ id: 'f-287-1', name: 'Video-huong-dan.docx', kind: 'doc', size: '18 KB', description: 'Đường dẫn video' }],
     phienBan: [],
-    daChiaSe: [{ person: viet, quyen: { xem: true, tai: true, chiaSe: false } }],
   },
   {
     id: 'vb-276',
@@ -334,14 +339,13 @@ export const sharedSeed: SharedDoc[] = [
     daXem: true,
     daHuy: false,
     quyen: { xem: true, tai: true, chiaSe: false },
-    nguoiKy: { name: 'Nguyễn Hữu Phúc', position: 'Tổng Giám đốc' },
+    nguoiKy: 'Nguyễn Hữu Phúc',
     nguoiDuThao: 'Trần Minh Quân · Ban Nhân sự',
     doKhan: 'Thường',
     doMat: 'Thường',
     vanBan: { id: 'f-276-main', name: '276-QD-THACO.pdf', kind: 'pdf', size: '610 KB', description: 'Văn bản đóng dấu', pages: 3 },
     tep: [],
     phienBan: [],
-    daChiaSe: [],
   },
   {
     id: 'vb-269',
@@ -355,14 +359,13 @@ export const sharedSeed: SharedDoc[] = [
     daHuy: true,
     lyDoHuy: 'Hội nghị dời lịch, văn bản sẽ ban hành lại.',
     quyen: { xem: true, tai: false, chiaSe: false },
-    nguoiKy: { name: 'Lê Thị Hồng', position: 'Trưởng Ban HCNS' },
+    nguoiKy: 'Lê Thị Hồng',
     nguoiDuThao: 'Nguyễn Văn An · Ban HCNS',
     doKhan: 'Thường',
     doMat: 'Thường',
     vanBan: { id: 'f-269-main', name: '269-CV-HCNS.pdf', kind: 'pdf', size: '230 KB', description: 'Văn bản đóng dấu', pages: 1 },
     tep: [],
     phienBan: [],
-    daChiaSe: [],
   },
 ];
 
@@ -376,7 +379,7 @@ export const stampSeed: StampDoc[] = [
     trichYeu: 'V/v đề nghị cấp tài khoản VPN cho nhà thầu triển khai ERP',
     donVi: 'Ban CNTT',
     ngayVaoSo: '2026-10-16',
-    nguoiKy: { name: hung.name, position: 'Trưởng Ban CNTT' },
+    nguoiKy: hung.name,
     tuEsign: true,
   },
   {
@@ -387,6 +390,22 @@ export const stampSeed: StampDoc[] = [
     trichYeu: 'Lịch bảo trì hệ thống email nội bộ ngày 19/10/2026',
     donVi: 'Ban CNTT',
     ngayVaoSo: '2026-10-15',
-    nguoiKy: { name: tuan.name, position: 'Phó Ban CNTT' },
+    nguoiKy: tuan.name,
   },
 ];
+
+/** `CongViec/Calendar` of `me`: the tasks behind the incoming documents above, plus one waiting for distribution. */
+export const calendarSeed: CongViecItemDto[] = [
+  { id: 'cv-1248', vanBanDenId: 'vbd-1248', maSoVanBan: '1248', trichYeu: incomingSeed[0].trichYeu, tenChuTri: me.name, ngayPhanPhoi: '2026-10-14T09:20:00', hanXuLy: '2026-10-20T00:00:00', vanBanTrangThai: 2, vaiTroNguoiDung: 'chuTri', mauLoai: 'chuTriChuaHt' },
+  { id: 'cv-1244', vanBanDenId: 'vbd-1244', maSoVanBan: '1244', trichYeu: 'Kế hoạch diễn tập ứng cứu sự cố an toàn thông tin năm 2026', tenChuTri: tuan.name, ngayPhanPhoi: '2026-10-13T10:30:00', hanXuLy: '2026-10-17T00:00:00', vanBanTrangThai: 2, vaiTroNguoiDung: 'phoiHop', mauLoai: 'phoiHopChuaHt' },
+  { id: 'cv-1236', vanBanDenId: 'vbd-1236', maSoVanBan: '1236', trichYeu: 'Hướng dẫn báo cáo tình hình sử dụng lao động 6 tháng cuối năm 2026', tenChuTri: ha.name, ngayPhanPhoi: '2026-10-05T08:10:00', hanXuLy: '2026-10-13T00:00:00', vanBanTrangThai: 2, vaiTroNguoiDung: 'phoiHop', mauLoai: 'phoiHopChuaHt' },
+  { id: 'cv-1233', vanBanDenId: 'vbd-1233', maSoVanBan: '1233', trichYeu: 'Giấy mời dự hội thảo chuyển đổi số ngành cơ khí năm 2026', tenChuTri: tuan.name, ngayPhanPhoi: '2026-10-09T16:00:00', hanXuLy: '2026-10-18T00:00:00', vanBanTrangThai: 2, vaiTroNguoiDung: 'deBiet', mauLoai: 'deBietChuaHt' },
+  { id: 'cv-1230', vanBanDenId: 'vbd-1230', maSoVanBan: '1230', trichYeu: 'V/v hướng dẫn thủ tục nhập khẩu linh kiện CKD', tenChuTri: lan.name, ngayPhanPhoi: '2026-10-12T14:00:00', hanXuLy: '2026-10-25T00:00:00', vanBanTrangThai: 2, vaiTroNguoiDung: 'deBiet', mauLoai: 'deBietChuaHt' },
+  { id: 'cv-1239', vanBanDenId: 'vbd-1239', maSoVanBan: '1239', trichYeu: 'V/v cung cấp số liệu tiêu thụ điện của trung tâm dữ liệu quý III/2026', tenChuTri: me.name, ngayPhanPhoi: '2026-10-07T08:30:00', hanXuLy: '2026-10-12T00:00:00', vanBanTrangThai: 4, vaiTroNguoiDung: 'chuTri', mauLoai: 'hoanTat', ketQua: 'Đã gửi số liệu.' },
+  { id: 'cv-1227', vanBanDenId: 'vbd-1227', maSoVanBan: '1227', trichYeu: 'Thông báo tổ chức hội nghị xúc tiến đầu tư vào KCN Tam Hiệp', tenChuTri: tuan.name, ngayPhanPhoi: '2026-10-03T09:00:00', hanXuLy: '2026-10-09T00:00:00', vanBanTrangThai: 2, isHuyVanBan: true, vaiTroNguoiDung: 'phoiHop', mauLoai: 'phoiHopChuaHt' },
+  { id: 'cv-1219', vanBanDenId: 'vbd-1219', maSoVanBan: '1219', trichYeu: 'V/v đối chiếu số liệu đóng BHXH quý III/2026', tenChuTri: ha.name, ngayPhanPhoi: '2026-09-29T10:00:00', hanXuLy: '2026-10-05T00:00:00', vanBanTrangThai: 4, vaiTroNguoiDung: 'deBiet', mauLoai: 'hoanTat' },
+  // Waiting for me to distribute: listed on the web calendar, not a task.
+  { id: 'vbd-1250', vanBanDenId: 'vbd-1250', maSoVanBan: '1250', trichYeu: 'V/v triển khai chữ ký số cho doanh nghiệp trong các khu công nghiệp', ngayPhanPhoi: null, hanXuLy: '2026-10-15T00:00:00', vanBanTrangThai: 1, vaiTroNguoiDung: 'phoiHop', mauLoai: 'phoiHopChuaHt' },
+];
+
+export const taskSeed = calendarSeed.filter(isTaskItem).map(taskFromItem);

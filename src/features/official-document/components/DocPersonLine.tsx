@@ -6,10 +6,12 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { Text } from '@/shared/ui/Text';
 
 import type { DocPerson } from '../types';
+import { shortUnit } from '../utils/text';
 
-/** 36pt initials avatar, the name, then MSNV · unit, with a "Kiêm nhiệm" tag for a concurrent post. */
+/** 36pt initials avatar, the name, then MSNV · position · unit (what is known), with a "Kiêm nhiệm" tag for a concurrent post. */
 export function DocPersonLine({ person, isMe, trailing, testID }: { person: DocPerson; isMe?: boolean; trailing?: ReactNode; testID?: string }) {
   const { t } = useTranslation();
+  const rest = [person.position, shortUnit(person.unit)].filter(Boolean).join(' · ');
   return (
     <View testID={testID} className="min-h-[48px] flex-row items-center gap-3">
       <Avatar name={person.name} size={36} />
@@ -26,12 +28,16 @@ export function DocPersonLine({ person, isMe, trailing, testID }: { person: DocP
             </View>
           ) : null}
         </View>
-        <Text numberOfLines={1} className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
-          <Text mono className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
-            {person.code}
+        {person.code || rest ? (
+          <Text numberOfLines={1} className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+            {person.code ? (
+              <Text mono className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
+                {person.code}
+              </Text>
+            ) : null}
+            {person.code && rest ? ` · ${rest}` : rest}
           </Text>
-          {` · ${person.position ? `${person.position} · ` : ''}${person.unit}`}
-        </Text>
+        ) : null}
       </View>
       {trailing}
     </View>

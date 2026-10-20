@@ -1,6 +1,7 @@
 import '../global.css';
 import '@/core/i18n';
 
+import { defaultShouldDehydrateQuery, type Query } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
@@ -26,6 +27,8 @@ const persistOptions = {
   persister: queryPersister,
   maxAge: 24 * 60 * 60 * 1000,
   buster: Constants.expoConfig?.version ?? 'dev',
+  // `meta: { persist: false }` keeps a query in memory only (whole staff lists).
+  dehydrateOptions: { shouldDehydrateQuery: (query: Query) => defaultShouldDehydrateQuery(query) && query.meta?.persist !== false },
 };
 
 void restoreSession();

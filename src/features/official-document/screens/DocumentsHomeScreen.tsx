@@ -36,8 +36,9 @@ import { DocumentsHeaderArt } from '../components/DocumentsHeaderArt';
 import { TaskCard } from '../components/TaskCard';
 import { useDocumentMe } from '../hooks/useDocumentMe';
 import { useDocumentSummary } from '../hooks/useDocumentSummary';
-import { useIncomingDocs } from '../hooks/useIncomingDocs';
-import { byUrgency, tasksOf, tasksOnDay } from '../utils/tasks';
+import { useDocumentTasks } from '../hooks/useDocumentTasks';
+import { byUrgency, tasksOnDay } from '../utils/tasks';
+import { shortUnit } from '../utils/text';
 
 const TODAY_TASKS = 3;
 
@@ -48,10 +49,10 @@ export function DocumentsHomeScreen() {
   const { fg, text2, text3 } = useHeaderColors();
   const me = useDocumentMe();
   const { summary, isLoading, isError, error, refetch } = useDocumentSummary();
-  const incoming = useIncomingDocs();
+  const tasks = useDocumentTasks();
   const pull = usePullRefresh(refetch);
   const today = todayKey();
-  const openToday = tasksOnDay(tasksOf(incoming.data ?? []), today, today)
+  const openToday = tasksOnDay(tasks.data ?? [], today, today)
     .filter((task) => !task.cancelled && !task.done)
     .sort(byUrgency);
   const todayTasks = openToday.slice(0, TODAY_TASKS);
@@ -63,7 +64,7 @@ export function DocumentsHomeScreen() {
       icon={ScrollTextIcon}
       art={<DocumentsHeaderArt />}
       title={t('documents.title')}
-      subtitle={me.data?.unit ?? t('documents.home.subtitleFallback')}
+      subtitle={shortUnit(me.data?.unit ?? '') || t('documents.home.subtitleFallback')}
       right={<HeaderIconButton testID="documents-search" icon={SearchIcon} label={t('documents.search')} onPress={() => router.push({ pathname: '/documents/incoming', params: { search: '1' } })} />}
       bottom={12 + OVERLAP}
     >

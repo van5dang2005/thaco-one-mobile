@@ -1,12 +1,12 @@
-import { incomingSeed, me, sharedSeed, directory, stampSeed } from '../../api/mock';
+import { directory, incomingSeed, me, sharedSeed, stampSeed, taskSeed } from '../__fixtures__/documents';
 import type { Assignment } from '../../types';
 import { assignmentError, MAX_CHU_TRI, roleCounts, toggleRole, withoutProcessing } from '../assignment';
 import { deadlineOf } from '../deadline';
 import { documentSummary, incomingCounts, inIncomingTab, sortIncoming } from '../incoming';
 import { groupShared, matchesSharedFilter, sharedFilterCounts } from '../shared';
 import { DEFAULT_GRANT, grantable, isLocked, toggleGrant } from '../sharing';
-import { boldRuns, joinNames, matchesQuery } from '../text';
-import { addMonths, dayTones, inMonth, monthWeeks, taskCounts, taskProgress, tasksOf, tasksOnDay, taskStage, weekOf } from '../tasks';
+import { boldRuns, indexPeople, joinNames, matchesQuery, searchPeople, shortUnit } from '../text';
+import { addMonths, dayTones, inMonth, monthWeeks, taskCounts, taskProgress, tasksOnDay, taskStage, visibleMonths, weekOf, withOverdue } from '../tasks';
 
 const TODAY = '2026-10-16';
 const [ha, long, mai] = ['nv-ha', 'nv-long', 'nv-mai'].map((id) => directory.find((p) => p.id === id)!);
@@ -63,8 +63,8 @@ describe('share permissions', () => {
   });
 });
 
-describe('mock data summary (design numbers)', () => {
-  const summary = documentSummary(incomingSeed, sharedSeed, stampSeed, TODAY);
+describe('summary (design numbers)', () => {
+  const summary = documentSummary(incomingSeed, sharedSeed, stampSeed, taskSeed, TODAY);
 
   it('matches the home tiles', () => {
     expect(summary).toMatchObject({ toHandle: 5, toDistribute: 2, returned: 1, toProcess: 3, chuTri: 1, phoiHop: 2, unread: 1, toStamp: 2, toStampDi: 1, toStampNoiBo: 1, overdue: 1, worstOverdueDays: 3, shared: 4, unreadShared: 3, pending: 7 });
@@ -80,7 +80,12 @@ describe('mock data summary (design numbers)', () => {
 });
 
 describe('tasks', () => {
-  const tasks = tasksOf(incomingSeed);
+  const tasks = taskSeed;
+
+  it('leaves out documents still waiting for distribution', () => {
+    expect(tasks).toHaveLength(8);
+    expect(tasks.find((t) => t.soDen === '1248')).toMatchObject({ docId: 'vbd-1248', role: 'chu_tri', from: '2026-10-14', to: '2026-10-20', hasDeadline: true, done: false });
+  });
 
   it('sorts tasks into exclusive tabs', () => {
     const counts = taskCounts(tasks, TODAY);
@@ -92,6 +97,21 @@ describe('tasks', () => {
     const overdue = tasks.find((t) => t.soDen === '1236')!;
     expect(tasksOnDay([overdue], '2026-10-15', TODAY)).toHaveLength(1);
     expect(taskProgress(overdue, TODAY)).toBe(1);
+  });
+
+  it('asks for the months the calendar shows', () => {
+    expect(visibleMonths(TODAY, false)).toEqual(['2026-10']);
+    expect(visibleMonths('2026-10-01', false)).toEqual(['2026-09', '2026-10']);
+    expect(visibleMonths(TODAY, true)).toEqual(['2026-09', '2026-10', '2026-11']);
+  });
+
+  it('keeps overdue tasks a month request leaves out, preferring the month copy', () => {
+    const overdue = tasks.find((t) => t.soDen === '1236')!;
+    const fresh = { ...tasks.find((t) => t.soDen === '1248')!, done: true };
+    const merged = withOverdue([fresh], tasks, TODAY);
+    expect(merged.map((t) => t.soDen).sort()).toEqual(['1236', '1248']);
+    expect(merged.find((t) => t.soDen === '1248')!.done).toBe(true);
+    expect(withOverdue([overdue, overdue], [], TODAY)).toHaveLength(1);
   });
 
   it('draws the week Monday to Sunday with role dots', () => {
@@ -116,6 +136,15 @@ describe('text helpers', () => {
     expect(matchesQuery('dang anh', 'Đặng Anh Tuấn')).toBe(true);
     expect(matchesQuery('', 'anything')).toBe(true);
     expect(matchesQuery('xyz', 'Trần Thu Hà')).toBe(false);
+  });
+
+  it('searches a folded people index and names a unit by its last level', () => {
+    const index = indexPeople(directory);
+    expect(searchPeople(index, 'bao', 5).map((p) => p.id)).toEqual(['nv-bao']);
+    expect(searchPeople(index, '', 2)).toHaveLength(2);
+    expect(searchPeople(index, 'ban cntt', 20, (p) => p.id === 'nv-khoa')).toHaveLength(directory.length - 1);
+    expect(shortUnit('THACO GROUP/Các Ban NVQT/ Ban CNTT ')).toBe('Ban CNTT');
+    expect(shortUnit('')).toBe('');
   });
 
   it('joins names and splits bold runs', () => {

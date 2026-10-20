@@ -37,7 +37,7 @@ function restore(queryClient: QueryClient, id: string, snapshot?: Snapshot) {
 
 /**
  * Actions on an incoming document, each applied to the cache right away (optimistic) and rolled back if the
- * call fails: distribute (8e), complete or return (8f), send an opinion, mark as read.
+ * call fails: distribute (8e), complete or return (8f), mark as read.
  */
 export function useIncomingActions(meId?: string) {
   const queryClient = useQueryClient();
@@ -55,6 +55,7 @@ export function useIncomingActions(meId?: string) {
         yKienPhanPhoi: input.yKien.trim() || undefined,
         thanhPhan: input.thanhPhan,
         vaiTro: input.thanhPhan.find((a) => a.person.id === meId)?.role,
+        coThePhanPhoi: false,
         phanPhoiLuc: new Date().toISOString(),
         lyDoTraLai: undefined,
       })),
@@ -64,7 +65,7 @@ export function useIncomingActions(meId?: string) {
 
   const complete = useMutation({
     mutationFn: ({ id, ketQua }: { id: string; ketQua: string }) => officialDocumentApi.complete(id, ketQua),
-    onMutate: ({ id, ketQua }) => patch(queryClient, id, (doc) => ({ ...doc, trangThai: 'da_xu_ly', ketQua: ketQua.trim(), ngayHoanTat: todayKey() })),
+    onMutate: ({ id, ketQua }) => patch(queryClient, id, (doc) => ({ ...doc, trangThai: 'da_xu_ly', coTheXuLy: false, ketQua: ketQua.trim(), ngayHoanTat: todayKey() })),
     onError: (_e, { id }, snapshot) => restore(queryClient, id, snapshot),
     onSettled: settle,
   });
@@ -72,14 +73,7 @@ export function useIncomingActions(meId?: string) {
   const returnDoc = useMutation({
     mutationFn: ({ id, lyDo }: { id: string; lyDo: string }) => officialDocumentApi.returnDoc(id, lyDo),
     // Without the right to distribute it, the document leaves my list.
-    onMutate: ({ id, lyDo }) => patch(queryClient, id, (doc) => (doc.coThePhanPhoi ? { ...doc, trangThai: 'bi_tra_lai', lyDoTraLai: lyDo.trim() } : null)),
-    onError: (_e, { id }, snapshot) => restore(queryClient, id, snapshot),
-    onSettled: settle,
-  });
-
-  const sendOpinion = useMutation({
-    mutationFn: ({ id, yKien }: { id: string; yKien: string }) => officialDocumentApi.sendOpinion(id, yKien),
-    onMutate: ({ id, yKien }) => patch(queryClient, id, (doc) => ({ ...doc, yKienCuaToi: yKien.trim() })),
+    onMutate: ({ id, lyDo }) => patch(queryClient, id, (doc) => (doc.coThePhanPhoi ? { ...doc, trangThai: 'bi_tra_lai', coTheXuLy: false, lyDoTraLai: lyDo.trim() } : null)),
     onError: (_e, { id }, snapshot) => restore(queryClient, id, snapshot),
     onSettled: settle,
   });
@@ -90,5 +84,5 @@ export function useIncomingActions(meId?: string) {
     onError: (_e, id, snapshot) => restore(queryClient, id, snapshot),
   });
 
-  return { assign, complete, returnDoc, sendOpinion, markRead };
+  return { assign, complete, returnDoc, markRead };
 }

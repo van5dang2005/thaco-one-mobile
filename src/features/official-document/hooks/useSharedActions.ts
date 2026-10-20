@@ -3,9 +3,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/core/query/keys';
 
 import { officialDocumentApi } from '../api/officialDocument.api';
-import type { ShareGrant, SharedDoc } from '../types';
+import type { ShareRecipient, SharedDoc } from '../types';
 
-/** Mark a shared document as read (8h) and share it on (8i), both applied to the cache right away. */
+/** Mark a shared document as read (8h), applied to the cache right away, and share it on (8i). */
 export function useSharedActions() {
   const queryClient = useQueryClient();
 
@@ -27,10 +27,10 @@ export function useSharedActions() {
     onError: (_e, id, snapshot) => restore(id, snapshot),
   });
 
+  /** `recipients` is the final list (everyone keeps or loses the document by it). */
   const share = useMutation({
-    mutationFn: ({ id, grants }: { id: string; grants: ShareGrant[] }) => officialDocumentApi.share(id, grants),
-    onMutate: ({ id, grants }) => update(id, (d) => ({ ...d, daChiaSe: [...d.daChiaSe, ...grants] })),
-    onError: (_e, { id }, snapshot) => restore(id, snapshot),
+    mutationFn: ({ id, recipients }: { id: string; recipients: ShareRecipient[] }) => officialDocumentApi.share(id, recipients),
+    // The list, the detail and who holds what.
     onSettled: () => void queryClient.invalidateQueries({ queryKey: qk.documents.shared }),
   });
 

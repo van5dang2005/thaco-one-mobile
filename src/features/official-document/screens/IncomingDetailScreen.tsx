@@ -10,7 +10,7 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { Banner } from '@/shared/ui/Banner';
 import { Button } from '@/shared/ui/Button';
 import { Card, Divider, FloatingCard } from '@/shared/ui/Card';
-import { CheckCheckIcon, ForwardIcon, InboxIcon, MessageSquareTextIcon, Undo2Icon } from '@/shared/ui/icons';
+import { CheckCheckIcon, ForwardIcon, InboxIcon, Undo2Icon } from '@/shared/ui/icons';
 import { ModuleHeader } from '@/shared/ui/ModuleHeader';
 import { ModuleScreen } from '@/shared/ui/ModuleScreen';
 import { onBlue, useHeaderColors } from '@/shared/ui/ScreenShell';
@@ -21,7 +21,6 @@ import { Text } from '@/shared/ui/Text';
 
 import { DocPersonLine } from '../components/DocPersonLine';
 import { FileRow } from '../components/FileRow';
-import { OpinionSheet } from '../components/OpinionSheet';
 import { ProcessSheet } from '../components/ProcessSheet';
 import { RoleBadge } from '../components/RoleBadge';
 import { useDocumentMe } from '../hooks/useDocumentMe';
@@ -35,8 +34,9 @@ import { needsDistribution } from '../utils/incoming';
 const ROLES: DocRole[] = ['chu_tri', 'phoi_hop', 'de_biet'];
 
 /**
- * Incoming document (8d). What the footer offers depends on my part: chủ trì completes or returns it,
- * phối hợp sends an opinion, để biết only reads (opening marks it read), a distributor assigns it.
+ * Incoming document (8d). The footer follows the back-end's rights: a distributor assigns it (`canPhanPhoiXuLy`),
+ * the chủ trì completes or returns it (`canHoanTat` / `canTraLai`); phối hợp and để biết only read. Opening it
+ * marks it read for a distributor.
  */
 export function IncomingDetailScreen() {
   const { t } = useTranslation();
@@ -46,7 +46,7 @@ export function IncomingDetailScreen() {
   const meId = me.data?.id ?? '';
   const { markRead } = useIncomingActions(meId);
   const pull = usePullRefresh(() => query.refetch());
-  const [sheet, setSheet] = useState<'complete' | 'return' | 'opinion' | null>(null);
+  const [sheet, setSheet] = useState<'complete' | 'return' | null>(null);
   const doc = query.data;
 
   const unread = doc && !doc.daXem;
@@ -86,20 +86,9 @@ export function IncomingDetailScreen() {
         onPress={() => router.push({ pathname: '/documents/incoming/[id]/assign', params: { id: doc.id } })}
       />,
     );
-  } else if (processing && doc.vaiTro === 'chu_tri') {
+  } else if (processing && doc.coTheXuLy) {
     footer.push(<Button key="return" testID="detail-return" variant="danger-outline" icon={Undo2Icon} label={t('documents.process.return')} onPress={() => setSheet('return')} />);
     footer.push(<Button key="complete" testID="detail-complete" className="flex-1" icon={CheckCheckIcon} label={t('documents.process.complete')} onPress={() => setSheet('complete')} />);
-  } else if (processing && doc.vaiTro === 'phoi_hop') {
-    footer.push(
-      <Button
-        key="opinion"
-        testID="detail-opinion"
-        className="flex-1"
-        icon={MessageSquareTextIcon}
-        label={doc.yKienCuaToi ? t('documents.detail.updateOpinion') : t('documents.opinion.title')}
-        onPress={() => setSheet('opinion')}
-      />,
-    );
   }
 
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/documents/incoming'));
@@ -115,6 +104,7 @@ export function IncomingDetailScreen() {
       {doc.daHuy ? <Banner tone="off">{t('documents.detail.cancelledNote')}</Banner> : null}
       {doc.trangThai === 'bi_tra_lai' && doc.lyDoTraLai ? <Banner tone="danger">{t('documents.detail.returnedNote', { reason: doc.lyDoTraLai })}</Banner> : null}
       {doc.vaiTro === 'de_biet' && processing ? <Banner tone="info">{t('documents.detail.readOnly')}</Banner> : null}
+      {doc.vaiTro === 'phoi_hop' && processing ? <Banner tone="info">{t('documents.detail.coordinate')}</Banner> : null}
 
       {doc.ketQua ? (
         <Card className="gap-1.5 p-3.5" testID="detail-result">
@@ -123,14 +113,7 @@ export function IncomingDetailScreen() {
         </Card>
       ) : null}
 
-      {doc.nguoiPhanPhoi ? <DistributionCard doc={doc} meId={meId} /> : null}
-
-      {doc.yKienCuaToi ? (
-        <Card className="gap-1.5 p-3.5" testID="detail-my-opinion">
-          <SectionTitle>{t('documents.detail.myOpinion')}</SectionTitle>
-          <Text style={{ fontSize: 14, lineHeight: 20 }}>{doc.yKienCuaToi}</Text>
-        </Card>
-      ) : null}
+      {doc.nguoiPhanPhoi ? <DistributionCard doc={doc} meName={me.data?.name} /> : null}
 
       {doc.thanhPhan.length ? <TeamCard doc={doc} meId={meId} /> : null}
 
@@ -149,7 +132,6 @@ export function IncomingDetailScreen() {
           }}
         />
       ) : null}
-      {sheet === 'opinion' ? <OpinionSheet doc={doc} meId={meId} visible onClose={() => setSheet(null)} /> : null}
     </ModuleScreen>
   );
 }
@@ -159,7 +141,7 @@ function DetailHero({ doc }: { doc: IncomingDoc }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { fg, text2 } = useHeaderColors();
-  const actionable = doc.trangThai === 'dang_xu_ly' && !doc.daHuy && (doc.vaiTro === 'chu_tri' || doc.vaiTro === 'phoi_hop');
+  const actionable = doc.trangThai === 'dang_xu_ly' && !doc.daHuy && (doc.coTheXuLy || doc.vaiTro === 'phoi_hop');
   const status = doc.daHuy
     ? t('documents.incoming.cancelled')
     : doc.trangThai === 'bi_tra_lai'
@@ -240,18 +222,18 @@ function DeadlineCard({ doc }: { doc: IncomingDoc }) {
 }
 
 /** Who assigned the processing, when, and their instruction. */
-function DistributionCard({ doc, meId }: { doc: IncomingDoc; meId: string }) {
+function DistributionCard({ doc, meName }: { doc: IncomingDoc; meName?: string }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const person = doc.nguoiPhanPhoi!;
+  const name = doc.nguoiPhanPhoi!;
   const at = parseServerDate(doc.phanPhoiLuc ?? null);
   return (
     <Card className="gap-3 p-3.5" testID="detail-distribution">
       <View className="flex-row items-center gap-3">
-        <Avatar name={person.name} size={38} />
+        <Avatar name={name} size={38} />
         <View className="min-w-0 flex-1">
           <Text weight="semibold" numberOfLines={1} style={{ fontSize: 14, lineHeight: 19 }}>
-            {person.id === meId ? t('documents.youName', { name: person.name }) : person.name}
+            {name === meName ? t('documents.youName', { name }) : name}
           </Text>
           {at ? (
             <Text mono className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>

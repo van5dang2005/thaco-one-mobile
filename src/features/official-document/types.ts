@@ -2,8 +2,8 @@ import type { DateKey } from '@/core/time/vn';
 
 /**
  * Văn thư (official documents), mobile scope of VANTHU_MOBILE.md: incoming documents the user distributes or
- * processes, and outgoing / internal documents shared with them. Served by `api/officialDocument.api.ts`
- * (mock data for now, shaped so the calls can move to `thaco_be_ql_van_thu`).
+ * processes, and outgoing / internal documents shared with them. Served by `thaco_be_ql_van_thu` through
+ * `api/officialDocument.api.ts`; `utils/mapping.ts` turns its DTOs (`api/dto.ts`) into these types.
  */
 
 /** The user's part in an incoming document's processing (`VanBanDen_ThanhPhanCongViec.VaiTro` 1 / 2 / 3). */
@@ -26,11 +26,14 @@ export type DocFile = {
   /** "Văn bản đóng dấu", "Phụ lục"… */
   description?: string;
   pages?: number;
-  /** Absolute URL once the API serves files; mock files have none. */
+  /** Absolute URL; none when I may not view it. */
   url?: string;
 };
 
-/** A staff member (`NhanVien`): what person pickers and rows show. */
+/**
+ * A staff member (`NhanVien`): what person pickers and rows show. Some lists only name people (the processing
+ * team of a list row): `id` is then `name:<name>` and `code` / `unit` are empty.
+ */
 export type DocPerson = {
   id: string;
   name: string;
@@ -61,10 +64,14 @@ export type IncomingDoc = {
   trangThai: IncomingStatus;
   /** The user's role once processing is assigned (none for a distributor only). */
   vaiTro?: DocRole;
-  /** The user may distribute it (creator or chosen distributor). */
+  /** The user's task (`VanBanDen_CongViec`) behind `vaiTro`: its detail lists the team with ids. */
+  congViecId?: string;
+  /** The user may distribute it now (`canPhanPhoiXuLy`: creator or chosen distributor, waiting or returned). */
   coThePhanPhoi: boolean;
-  /** Who assigned the processing, and when. */
-  nguoiPhanPhoi?: DocPerson;
+  /** The user may complete or return it (`canHoanTat` / `canTraLai`: chủ trì of the current task, or admin). */
+  coTheXuLy: boolean;
+  /** Who assigned the processing (name only), and when. */
+  nguoiPhanPhoi?: string;
   phanPhoiLuc?: string;
   yKienPhanPhoi?: string;
   thanhPhan: Assignment[];
@@ -74,10 +81,8 @@ export type IncomingDoc = {
   ngayHoanTat?: DateKey;
   /** The document was cancelled by the clerk (`IsHuy`). */
   daHuy?: boolean;
-  /** The user opened it (distributor red/black, "để biết" read receipt). */
+  /** False while I, a distributor, have not opened it (`isChuaDoc`, red on the web). */
   daXem: boolean;
-  /** Opinion the user sent as "phối hợp". */
-  yKienCuaToi?: string;
 };
 
 /** `VanBan.Loai` 2 / 3. */
@@ -104,18 +109,28 @@ export type SharedDoc = {
   lyDoHuy?: string;
   /** What the user was granted. */
   quyen: SharePermissions;
-  nguoiKy: { name: string; position: string };
-  nguoiDuThao: string;
-  doKhan: string;
-  doMat: string;
-  /** The stamped main file. */
-  vanBan: DocFile;
+  nguoiKy?: string;
+  nguoiDuThao?: string;
+  doKhan?: string;
+  doMat?: string;
+  /** The stamped main file; known once the detail loaded its files. */
+  vanBan?: DocFile;
   tep: DocFile[];
   /** Earlier versions (original before stamping). */
   phienBan: DocFile[];
-  /** Who already has it, read-only on the share sheet. */
-  daChiaSe: ShareGrant[];
 };
+
+/** A colleague on the share sheet with what they hold now (`VanBan_ThanhPhanModel`). */
+export type ShareRecipient = {
+  person: DocPerson;
+  quyen: SharePermissions;
+  /** Sent back as is: a văn thư account without HRM record has the empty id and a `userId`. */
+  nhanVienId: string;
+  userId?: string;
+};
+
+/** Everyone I may share a document with, and the ceiling of what I may grant (`grantablePermissions`). */
+export type ShareOptions = { recipients: ShareRecipient[]; ceiling: SharePermissions };
 
 /**
  * An outgoing / internal document of my unit registered in the book (`MaSoVanBan` set) but not stamped yet:
@@ -130,8 +145,9 @@ export type StampDoc = {
   loai: string;
   trichYeu: string;
   donVi: string;
+  /** Document date (`NgayVanBan`), else the day it was filed. */
   ngayVaoSo: DateKey;
-  nguoiKy: { name: string; position: string };
+  nguoiKy?: string;
   /** Signed on E-sign, waits here for the stamp. */
   tuEsign?: boolean;
 };

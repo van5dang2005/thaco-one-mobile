@@ -15,8 +15,8 @@ export function normalize(p: SharePermissions): SharePermissions {
 }
 
 /**
- * The ceiling of what I may hand on (`grantablePermissions`): only what I hold myself. Holding download or
- * re-share counts as holding view.
+ * The ceiling of what I may hand on: the back-end's `grantablePermissions`, or what I hold myself until it is
+ * known. Holding download or re-share counts as holding view.
  */
 export function grantable(mine: SharePermissions): SharePermissions {
   return normalize(mine);

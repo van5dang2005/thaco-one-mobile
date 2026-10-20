@@ -49,14 +49,21 @@ export const qk = {
     dashboard: ['guests', 'dashboard'] as const,
     visit: (qr: string) => ['guests', 'visit', qr] as const,
   },
+  /** Văn thư. The root moved off `documents` with the move to the real API: mock-shaped data persisted under it is never read back. */
   documents: {
-    root: ['documents'] as const,
-    me: ['documents', 'me'] as const,
-    people: ['documents', 'people'] as const,
-    incoming: ['documents', 'incoming'] as const,
-    incomingDetail: (id: string) => ['documents', 'incoming', 'detail', id] as const,
-    shared: ['documents', 'shared'] as const,
-    sharedDetail: (id: string) => ['documents', 'shared', 'detail', id] as const,
-    stampQueue: ['documents', 'stamp'] as const,
+    root: ['vanthu'] as const,
+    me: ['vanthu', 'me'] as const,
+    /** Staff to hand an incoming document to (`ThanhPhanPhanPhoi`). */
+    people: (docId: string) => ['vanthu', 'people', docId] as const,
+    incoming: ['vanthu', 'incoming'] as const,
+    incomingDetail: (id: string) => ['vanthu', 'incoming', 'detail', id] as const,
+    tasks: ['vanthu', 'tasks'] as const,
+    /** My tasks whose bar touches a month (`yyyy-MM`); under `tasks`, so refreshing those refreshes the months too. */
+    tasksMonth: (month: string) => ['vanthu', 'tasks', month] as const,
+    shared: ['vanthu', 'shared'] as const,
+    sharedDetail: (id: string) => ['vanthu', 'shared', 'detail', id] as const,
+    /** Staff with their current rights on a shared document, and what I may grant (`ThanhPhan`). */
+    recipients: (docId: string) => ['vanthu', 'shared', 'recipients', docId] as const,
+    stampQueue: ['vanthu', 'stamp'] as const,
   },
 };

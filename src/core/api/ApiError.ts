@@ -8,7 +8,7 @@ export type ServiceId = 'parcel' | 'room';
  * Every back-end `createApiClient` talks to: the services above, plus ones that only answer a feature's own calls
  * (no users/me, notifications or hub there), so they stay out of `ServiceId` and the per-service loops.
  */
-export type ApiService = ServiceId | 'guest';
+export type ApiService = ServiceId | 'guest' | 'document';
 
 type ApiErrorInit = {
   service: ApiService;

@@ -27,7 +27,7 @@ import { useDocumentMe } from '../hooks/useDocumentMe';
 import { useOpenDocFile } from '../hooks/useOpenDocFile';
 import { useSharedActions } from '../hooks/useSharedActions';
 import { useSharedDoc } from '../hooks/useSharedDoc';
-import type { SharedDoc } from '../types';
+import type { DocFile, SharedDoc } from '../types';
 
 /** A document shared with me (8h): main file, attachments, other versions, details, my rights; download and re-share by right. */
 export function SharedDetailScreen() {
@@ -67,14 +67,23 @@ export function SharedDetailScreen() {
 
   const canShare = doc.quyen.chiaSe && !doc.daHuy;
   const footer = [
-    <Button key="download" testID="shared-download" className="flex-1" variant="ghost" icon={DownloadIcon} label={t('documents.sharedDetail.download')} disabled={!doc.quyen.tai} onPress={() => open(doc.vanBan)} />,
+    <Button
+      key="download"
+      testID="shared-download"
+      className="flex-1"
+      variant="ghost"
+      icon={DownloadIcon}
+      label={t('documents.sharedDetail.download')}
+      disabled={!doc.quyen.tai || !doc.vanBan}
+      onPress={() => doc.vanBan && open(doc.vanBan)}
+    />,
     <Button key="share" testID="shared-share" className="flex-1" icon={Share2Icon} label={t('documents.sharedDetail.shareOn')} disabled={!canShare} onPress={() => setSharing(true)} />,
   ];
 
   return (
     <ModuleScreen
       header={header(<SharedHero doc={doc} />)}
-      floating={<MainFileCard doc={doc} onOpen={() => open(doc.vanBan)} />}
+      floating={doc.vanBan ? <MainFileCard doc={doc} file={doc.vanBan} onOpen={open} /> : undefined}
       floatingScrolls
       footer={footer}
       refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />}
@@ -96,10 +105,10 @@ export function SharedDetailScreen() {
       {doc.phienBan.length ? <VersionsCard doc={doc} onOpen={open} /> : null}
 
       <Card className="px-3.5 py-1.5" testID="shared-info">
-        <KeyValueRow label={t('documents.sharedDetail.signer')} value={`${doc.nguoiKy.name} · ${doc.nguoiKy.position}`} />
-        <KeyValueRow divider label={t('documents.sharedDetail.drafter')} value={doc.nguoiDuThao} />
-        <KeyValueRow divider label={t('documents.sharedDetail.urgency')} value={doc.doKhan} />
-        <KeyValueRow divider label={t('documents.sharedDetail.secrecy')} value={doc.doMat} />
+        <KeyValueRow label={t('documents.sharedDetail.signer')} value={doc.nguoiKy ?? '–'} />
+        <KeyValueRow divider label={t('documents.sharedDetail.drafter')} value={doc.nguoiDuThao ?? '–'} />
+        <KeyValueRow divider label={t('documents.sharedDetail.urgency')} value={doc.doKhan ?? '–'} />
+        <KeyValueRow divider label={t('documents.sharedDetail.secrecy')} value={doc.doMat ?? '–'} />
         <KeyValueRow divider mono label={t('documents.sharedDetail.sentOn')} value={formatKey(doc.ngayGui)} />
         {doc.hanPhanHoi ? <KeyValueRow divider mono label={t('documents.sharedDetail.replyBy')} value={formatKey(doc.hanPhanHoi)} /> : null}
       </Card>
@@ -134,21 +143,21 @@ function SharedHero({ doc }: { doc: SharedDoc }) {
 }
 
 /** Floating card: the stamped main file with "Xem". */
-function MainFileCard({ doc, onOpen }: { doc: SharedDoc; onOpen: () => void }) {
+function MainFileCard({ doc, file, onOpen }: { doc: SharedDoc; file: DocFile; onOpen: (file: DocFile) => void }) {
   const { t } = useTranslation();
   return (
     <FloatingCard radius={20} className="px-3.5 py-3">
       <FileRow
-        file={doc.vanBan}
+        file={file}
         testID="shared-main-file"
-        trailing={<Button testID="shared-view" size="sm" variant="soft" icon={EyeIcon} label={t('documents.view')} disabled={!doc.quyen.xem} onPress={onOpen} />}
+        trailing={<Button testID="shared-view" size="sm" variant="soft" icon={EyeIcon} label={t('documents.view')} disabled={!doc.quyen.xem} onPress={() => onOpen(file)} />}
       />
     </FloatingCard>
   );
 }
 
 /** "Phiên bản khác · N", collapsed by default. */
-function VersionsCard({ doc, onOpen }: { doc: SharedDoc; onOpen: (file: SharedDoc['vanBan']) => void }) {
+function VersionsCard({ doc, onOpen }: { doc: SharedDoc; onOpen: (file: DocFile) => void }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (

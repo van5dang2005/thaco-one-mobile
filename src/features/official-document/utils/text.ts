@@ -27,3 +27,34 @@ export function matchesQuery(query: string, ...fields: (string | undefined | nul
   const q = foldVi(query.trim());
   return !q || fields.some((field) => !!field && foldVi(field).includes(q));
 }
+
+/** People with their searchable text folded once: pickers search the whole staff list on every keystroke. */
+export type PersonIndex<P> = { person: P; key: string }[];
+
+export function indexPeople<P extends { name: string; code: string; unit: string; position?: string }>(people: readonly P[]): PersonIndex<P> {
+  return people.map((person) => ({ person, key: foldVi([person.name, person.code, person.unit, person.position].filter(Boolean).join(' ')) }));
+}
+
+/** Up to `limit` people whose name, MSNV, unit or position contains `query` (folded), in list order. */
+export function searchPeople<P>(index: PersonIndex<P>, query: string, limit: number, skip?: (person: P) => boolean): P[] {
+  const q = foldVi(query.trim());
+  const found: P[] = [];
+  for (const entry of index) {
+    if (found.length >= limit) break;
+    if (q && !entry.key.includes(q)) continue;
+    if (skip?.(entry.person)) continue;
+    found.push(entry.person);
+  }
+  return found;
+}
+
+/** HRM units come as a path ("THACO GROUP/Các Ban NVQT/Ban CNTT"): the last level names the unit. */
+export function shortUnit(unit: string) {
+  return (
+    unit
+      .split('/')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .pop() ?? ''
+  );
+}

@@ -2,6 +2,7 @@ import { toDateKey } from '@/core/time/vn';
 import { useNow } from '@/shared/hooks/useNow';
 
 import { documentSummary } from '../utils/incoming';
+import { useDocumentTasks } from './useDocumentTasks';
 import { useIncomingDocs } from './useIncomingDocs';
 import { useSharedDocs } from './useSharedDocs';
 import { useStampQueue } from './useStampQueue';
@@ -11,13 +12,15 @@ export function useDocumentSummary(enabled = true) {
   const incoming = useIncomingDocs(enabled);
   const shared = useSharedDocs(enabled);
   const stamp = useStampQueue(enabled);
+  const tasks = useDocumentTasks(enabled);
   const today = toDateKey(useNow(60_000));
-  const loaded = !!incoming.data && !!shared.data && !!stamp.data;
+  const queries = [incoming, shared, stamp, tasks];
+  const loaded = queries.every((q) => !!q.data);
   return {
-    summary: loaded ? documentSummary(incoming.data ?? [], shared.data ?? [], stamp.data ?? [], today) : undefined,
-    isLoading: enabled && (incoming.isLoading || shared.isLoading || stamp.isLoading),
-    isError: incoming.isError || shared.isError || stamp.isError,
-    error: incoming.error ?? shared.error ?? stamp.error,
-    refetch: () => Promise.all([incoming.refetch(), shared.refetch(), stamp.refetch()]),
+    summary: loaded ? documentSummary(incoming.data ?? [], shared.data ?? [], stamp.data ?? [], tasks.data ?? [], today) : undefined,
+    isLoading: enabled && queries.some((q) => q.isLoading),
+    isError: queries.some((q) => q.isError),
+    error: queries.find((q) => q.error)?.error ?? null,
+    refetch: () => Promise.all(queries.map((q) => q.refetch())),
   };
 }

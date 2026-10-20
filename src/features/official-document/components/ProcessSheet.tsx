@@ -41,7 +41,7 @@ export function ProcessSheet({ doc, meId, visible, onClose, onDone, initialMode 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [result, setResult] = useState('');
   const [reason, setReason] = useState('');
-  const distributor = doc.nguoiPhanPhoi?.name ?? t('documents.process.distributorFallback');
+  const distributor = doc.nguoiPhanPhoi ?? t('documents.process.distributorFallback');
   const team = joinNames([t('documents.you'), ...teamNames(doc.thanhPhan, meId)], t('documents.and'));
   const busy = complete.isPending || returnDoc.isPending;
 

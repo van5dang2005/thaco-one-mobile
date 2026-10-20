@@ -11,48 +11,52 @@ import { Divider } from '@/shared/ui/Card';
 import { Icon } from '@/shared/ui/Icon';
 import { CheckIcon, LockIcon, PlusIcon, SearchIcon, Share2Icon, XIcon } from '@/shared/ui/icons';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { ErrorState } from '@/shared/ui/StateViews';
 import { Text } from '@/shared/ui/Text';
 import { TextField } from '@/shared/ui/TextField';
 import { toast } from '@/shared/ui/Toast';
 
-import { useDocumentPeople } from '../hooks/useDocumentPeople';
+import { useShareOptions } from '../hooks/useShareOptions';
 import { useSharedActions } from '../hooks/useSharedActions';
-import type { DocPerson, ShareGrant, SharedDoc, SharePermissions } from '../types';
-import { matchesQuery } from '../utils/text';
+import type { DocPerson, ShareRecipient, SharedDoc, SharePermissions } from '../types';
 import { DEFAULT_GRANT, grantable, grantedList, isLocked, normalize, PERMISSIONS, toggleGrant, type Permission } from '../utils/sharing';
+import { indexPeople, searchPeople } from '../utils/text';
 import { DocPersonLine } from './DocPersonLine';
 
 const MAX_RESULTS = 8;
 
-function matches(person: DocPerson, query: string) {
-  return matchesQuery(query, person.name, person.code, person.unit, person.position);
-}
-
 /**
- * "Chia sẻ tiếp" (8i): pick colleagues and give each Xem / Tải / Chia sẻ within what I hold myself; people who
- * already have the document are listed read-only ("Giữ nguyên").
+ * "Chia sẻ tiếp" (8i): pick colleagues and give each Xem / Tải / Chia sẻ within the ceiling the back-end allows
+ * me (`grantablePermissions`); people who already have the document are listed read-only ("Giữ nguyên"). The
+ * API takes the final list, so sending waits until the current holders are loaded: they are sent back as they are.
  */
 export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; meId: string; visible: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const people = useDocumentPeople(visible);
+  const options = useShareOptions(doc.id, visible);
   const { share } = useSharedActions();
   const [query, setQuery] = useState('');
-  const [added, setAdded] = useState<ShareGrant[]>([]);
-  const mine = grantable(doc.quyen);
-  const rights = grantedList(mine).map((key) => t(`documents.perm.${key}`)).join(', ');
+  const [added, setAdded] = useState<ShareRecipient[]>([]);
+  const ceiling = options.data?.ceiling ?? grantable(doc.quyen);
+  const rights = grantedList(grantable(ceiling)).map((key) => t(`documents.perm.${key}`)).join(', ');
 
-  const taken = useMemo(() => new Set([meId, ...doc.daChiaSe.map((g) => g.person.id), ...added.map((g) => g.person.id)]), [meId, doc.daChiaSe, added]);
-  const results = query.trim() ? (people.data ?? []).filter((p) => !taken.has(p.id) && matches(p, query)).slice(0, MAX_RESULTS) : [];
+  const recipients = useMemo(() => options.data?.recipients ?? [], [options.data]);
+  const existing = useMemo(() => recipients.filter((r) => grantedList(r.quyen).length > 0), [recipients]);
+  const byId = useMemo(() => new Map(recipients.map((r) => [r.person.id, r])), [recipients]);
+  const index = useMemo(() => indexPeople(recipients.map((r) => r.person)), [recipients]);
+  const taken = useMemo(() => new Set([meId, ...existing.map((r) => r.person.id), ...added.map((r) => r.person.id)]), [meId, existing, added]);
+  const results = query.trim() ? searchPeople(index, query, MAX_RESULTS, (p) => taken.has(p.id)) : [];
 
   const add = (person: DocPerson) => {
-    setAdded((list) => [...list, { person, quyen: normalize({ ...DEFAULT_GRANT, xem: mine.xem }) }]);
+    const recipient = byId.get(person.id);
+    if (!recipient) return;
+    setAdded((list) => [...list, { ...recipient, quyen: normalize({ ...DEFAULT_GRANT, xem: grantable(ceiling).xem }) }]);
     setQuery('');
     // Back to the whole sheet: the new row and its permissions sit under the keyboard otherwise.
     Keyboard.dismiss();
   };
   const toggle = (personId: string, key: Permission) =>
-    setAdded((list) => list.map((g) => (g.person.id === personId ? { ...g, quyen: toggleGrant(g.quyen, key, doc.quyen) } : g)));
-  const remove = (personId: string) => setAdded((list) => list.filter((g) => g.person.id !== personId));
+    setAdded((list) => list.map((r) => (r.person.id === personId ? { ...r, quyen: toggleGrant(r.quyen, key, ceiling) } : r)));
+  const remove = (personId: string) => setAdded((list) => list.filter((r) => r.person.id !== personId));
 
   const close = () => {
     setAdded([]);
@@ -62,7 +66,7 @@ export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; me
 
   const submit = () =>
     share.mutate(
-      { id: doc.id, grants: added },
+      { id: doc.id, recipients: [...existing, ...added] },
       {
         onSuccess: () => {
           toast.success(t('documents.share.done', { count: added.length }));
@@ -87,7 +91,7 @@ export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; me
           testID="share-submit"
           icon={Share2Icon}
           label={added.length ? t('documents.share.submit', { count: added.length }) : t('documents.share.submitNone')}
-          disabled={!added.length}
+          disabled={!added.length || !options.data}
           loading={share.isPending}
           onPress={submit}
         />
@@ -95,7 +99,9 @@ export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; me
     >
       <TextField testID="share-search" leftIcon={SearchIcon} value={query} onChangeText={setQuery} placeholder={t('documents.share.search')} autoCorrect={false} returnKeyType="search" />
 
-      {!mine.tai ? (
+      {options.isError ? <ErrorState compact error={options.error} onRetry={() => void options.refetch()} /> : null}
+
+      {options.data && !ceiling.tai ? (
         <Banner tone="info" testID="share-no-download">
           {t('documents.share.noDownload')}
         </Banner>
@@ -103,7 +109,7 @@ export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; me
 
       {query.trim() ? (
         <View className="rounded-[16px] bg-panel px-3 py-1">
-          {people.isLoading ? (
+          {options.isLoading ? (
             <View className="gap-2 py-3">
               <Skeleton height={36} />
               <Skeleton height={36} />
@@ -131,7 +137,7 @@ export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; me
         </Text>
         {added.length ? (
           added.map((grant) => (
-            <View key={grant.person.id} className="gap-2.5 rounded-[16px] border border-line p-3" testID={`share-added-${grant.person.code}`}>
+            <View key={grant.person.id} className="gap-2.5 rounded-[16px] border border-line p-3" testID={`share-added-${grant.person.code || grant.person.id}`}>
               <DocPersonLine
                 person={grant.person}
                 trailing={
@@ -142,7 +148,7 @@ export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; me
               />
               <View className="flex-row gap-2">
                 {PERMISSIONS.map((key) => (
-                  <PermissionToggle key={key} label={t(`documents.perm.${key}`)} on={grant.quyen[key]} locked={isLocked(grant.quyen, key, doc.quyen)} onPress={() => toggle(grant.person.id, key)} testID={`share-${grant.person.code}-${key}`} />
+                  <PermissionToggle key={key} label={t(`documents.perm.${key}`)} on={grant.quyen[key]} locked={isLocked(grant.quyen, key, ceiling)} onPress={() => toggle(grant.person.id, key)} testID={`share-${grant.person.code}-${key}`} />
                 ))}
               </View>
             </View>
@@ -154,22 +160,28 @@ export function ShareSheet({ doc, meId, visible, onClose }: { doc: SharedDoc; me
         )}
       </View>
 
-      {doc.daChiaSe.length ? (
+      {options.isLoading ? (
+        <View className="gap-2" testID="share-existing-loading">
+          <Skeleton height={36} />
+          <Skeleton height={36} />
+        </View>
+      ) : existing.length ? (
         <View className="gap-1">
           <View className="flex-row items-baseline justify-between">
             <Text weight="semibold" style={{ fontSize: 13.5, lineHeight: 18 }}>
-              {t('documents.share.existing', { count: doc.daChiaSe.length })}
+              {t('documents.share.existing', { count: existing.length })}
             </Text>
             <Text className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
               {t('documents.share.keep')}
             </Text>
           </View>
-          {doc.daChiaSe.map((grant, i) => (
+          {existing.map((grant, i) => (
             <View key={grant.person.id}>
               {i > 0 ? <Divider inset={48} /> : null}
               <View className="py-1.5">
                 <DocPersonLine
                   person={grant.person}
+                  isMe={grant.person.id === meId}
                   trailing={
                     <Text className="text-muted" style={{ fontSize: 12, lineHeight: 16 }}>
                       {permissionText(grant.quyen, t)}

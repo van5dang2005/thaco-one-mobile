@@ -21,7 +21,7 @@ const MONTH_ROWS = [0, 1, 2].map((row) => [1, 2, 3, 4].map((col) => row * 4 + co
 const FADE = FadeIn.duration(180);
 
 /** `week`: the selected week (default) · `month`: the whole month · `pick`: year and the 12 months. */
-type Mode = 'week' | 'month' | 'pick';
+export type TaskCalendarMode = 'week' | 'month' | 'pick';
 
 /** What the arrows step in each mode (accessibility labels under `documents.tasks`). */
 const STEP_LABELS = {
@@ -30,16 +30,24 @@ const STEP_LABELS = {
   pick: ['prevYear', 'nextYear'],
 } as const;
 
-type Props = { tasks: DocTask[]; value: DateKey; onChange: (day: DateKey) => void; today: DateKey; onWeek: (delta: -1 | 1) => void };
+type Props = {
+  tasks: DocTask[];
+  value: DateKey;
+  onChange: (day: DateKey) => void;
+  today: DateKey;
+  onWeek: (delta: -1 | 1) => void;
+  /** Held by the screen, which loads the months on show. */
+  mode: TaskCalendarMode;
+  onModeChange: (mode: TaskCalendarMode) => void;
+};
 
 /**
  * Calendar of "Việc của tôi": the selected week with role dots under days with work; the handle at the bottom
  * expands it to the whole month, and the month title opens a year / month picker. Arrows step a week, a month or a year.
  */
-export function TaskWeekCard({ tasks, value, onChange, today, onWeek }: Props) {
+export function TaskWeekCard({ tasks, value, onChange, today, onWeek, mode, onModeChange }: Props) {
   const { t } = useTranslation();
   const toneColors = useTaskToneColors();
-  const [mode, setMode] = useState<Mode>('week');
   const [pickYear, setPickYear] = useState(() => parseDateKey(value).year);
 
   const week = weekOf(value);
@@ -53,7 +61,7 @@ export function TaskWeekCard({ tasks, value, onChange, today, onWeek }: Props) {
   };
   const togglePicker = () => {
     setPickYear(shown.year);
-    setMode((m) => (m === 'pick' ? 'month' : 'pick'));
+    onModeChange(mode === 'pick' ? 'month' : 'pick');
   };
 
   return (
@@ -108,7 +116,7 @@ export function TaskWeekCard({ tasks, value, onChange, today, onWeek }: Props) {
                   current={pickYear === parseDateKey(today).year && month === parseDateKey(today).month}
                   onPress={() => {
                     onChange(inMonth(value, pickYear, month));
-                    setMode('month');
+                    onModeChange('month');
                   }}
                   testID={`tasks-month-${month}`}
                 />
@@ -164,7 +172,7 @@ export function TaskWeekCard({ tasks, value, onChange, today, onWeek }: Props) {
         testID="tasks-calendar-toggle"
         accessibilityRole="button"
         accessibilityState={{ expanded: mode !== 'week' }}
-        onPress={() => setMode((m) => (m === 'week' ? 'month' : 'week'))}
+        onPress={() => onModeChange(mode === 'week' ? 'month' : 'week')}
         className="h-9 flex-row items-center justify-center gap-1 border-t border-line-2 active:opacity-60"
       >
         <Text weight="semibold" className="text-muted" style={{ fontSize: 12.5, lineHeight: 16 }}>

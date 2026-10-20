@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
@@ -26,17 +26,19 @@ import { toast } from '@/shared/ui/Toast';
 
 import { DocPersonLine } from '../components/DocPersonLine';
 import { useDocumentMe } from '../hooks/useDocumentMe';
-import { useDocumentPeople } from '../hooks/useDocumentPeople';
+import { useDistributionPeople } from '../hooks/useDistributionPeople';
 import { useIncomingActions } from '../hooks/useIncomingActions';
 import { useIncomingDoc } from '../hooks/useIncomingDoc';
 import type { Assignment, DocPerson, DocRole, IncomingDoc } from '../types';
-import { matchesQuery } from '../utils/text';
+import { indexPeople, matchesQuery, searchPeople } from '../utils/text';
 import { assignmentError, MAX_CHU_TRI, roleCounts, roleOf, toggleRole, withoutProcessing } from '../utils/assignment';
 
 const MAX_OPINION = 500;
 /** Default deadline when the document has none yet. */
 const DEFAULT_DAYS = 7;
 const ROLES: DocRole[] = ['chu_tri', 'phoi_hop', 'de_biet'];
+/** Rows listed below the chosen people: the whole staff list is too long to render. */
+const MAX_LISTED = 30;
 
 function matches(person: DocPerson, query: string) {
   return matchesQuery(query, person.name, person.code, person.position);
@@ -73,7 +75,7 @@ export function AssignProcessingScreen() {
 function AssignForm({ doc, header }: { doc: IncomingDoc; header: ReactNode }) {
   const { t } = useTranslation();
   const me = useDocumentMe();
-  const people = useDocumentPeople();
+  const people = useDistributionPeople(doc.id);
   const { assign } = useIncomingActions(me.data?.id);
   const today = todayKey();
 
@@ -89,7 +91,10 @@ function AssignForm({ doc, header }: { doc: IncomingDoc; header: ReactNode }) {
 
   const counts = roleCounts(assignments);
   const error = assignmentError(assignments, noProcessing);
-  const unit = me.data?.unit.split(' · ')[0] ?? t('documents.assign.unitFallback');
+  const unit = me.data?.unit;
+  const index = useMemo(() => indexPeople(people.data ?? []), [people.data]);
+  // Without a search, my own unit (the people a leader usually assigns).
+  const colleagues = useMemo(() => (unit ? indexPeople((people.data ?? []).filter((p) => p.unit === unit)) : index), [people.data, unit, index]);
 
   const onRole = (person: DocPerson, role: DocRole) => {
     const result = toggleRole(assignments, person, role);
@@ -118,10 +123,10 @@ function AssignForm({ doc, header }: { doc: IncomingDoc; header: ReactNode }) {
       },
     );
 
-  // Chosen people first, in the order they were picked; then the rest of the unit.
-  const list = people.data ?? [];
+  // Chosen people first, in the order they were picked; then search results, or my unit, a screenful at most.
   const chosen = assignments.map((a) => a.person).filter((p) => matches(p, search));
-  const others = list.filter((p) => !roleOf(assignments, p.id) && matches(p, search));
+  const others = searchPeople(search.trim() || !colleagues.length ? index : colleagues, search, MAX_LISTED + 1, (p) => !!roleOf(assignments, p.id));
+  const more = others.length > MAX_LISTED;
   const roles = noProcessing ? (['de_biet'] as DocRole[]) : ROLES;
 
   const footer = [
@@ -203,14 +208,14 @@ function AssignForm({ doc, header }: { doc: IncomingDoc; header: ReactNode }) {
             {noProcessing ? t('documents.assign.countsNoProcessing', { deBiet: counts.de_biet }) : t('documents.assign.counts', { chuTri: counts.chu_tri, max: MAX_CHU_TRI, phoiHop: counts.phoi_hop, deBiet: counts.de_biet })}
           </Text>
         </View>
-        <TextField testID="assign-search" leftIcon={SearchIcon} value={search} onChangeText={setSearch} placeholder={t('documents.assign.searchIn', { unit })} autoCorrect={false} />
+        <TextField testID="assign-search" leftIcon={SearchIcon} value={search} onChangeText={setSearch} placeholder={t('documents.assign.search')} autoCorrect={false} />
 
         {people.isLoading ? (
           <ListSkeleton count={3} lines={2} />
         ) : people.isError ? (
           <ErrorState compact error={people.error} onRetry={() => void people.refetch()} />
         ) : (
-          [...chosen, ...others].map((person, i) => (
+          [...chosen, ...others.slice(0, MAX_LISTED)].map((person, i) => (
             <View key={person.id}>
               {i > 0 ? <Divider /> : null}
               <View className="gap-2 py-1">
@@ -229,6 +234,11 @@ function AssignForm({ doc, header }: { doc: IncomingDoc; header: ReactNode }) {
         {!people.isLoading && !chosen.length && !others.length ? (
           <Text className="py-2 text-center text-muted" style={{ fontSize: 13, lineHeight: 18 }}>
             {t('documents.noPeople')}
+          </Text>
+        ) : null}
+        {more ? (
+          <Text testID="assign-more" className="py-1 text-center text-muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+            {t('documents.assign.searchMore')}
           </Text>
         ) : null}
       </Card>

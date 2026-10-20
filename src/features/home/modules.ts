@@ -132,7 +132,7 @@ export const nativeModules: readonly HomeModule[] = [
     labelKey: 'officialDocuments',
     icon: ScrollTextIcon,
     route: '/documents',
-    // Screens run on mock data until the app talks to thaco_be_ql_van_thu (see VANTHU_MOBILE.md).
+    // Served by thaco_be_ql_van_thu (`documentApi`), which accepts the same SSO token.
     permission: { app: 'VANTHU' },
     badge: useDocumentsPending,
     summary: useDocumentsSummary,
