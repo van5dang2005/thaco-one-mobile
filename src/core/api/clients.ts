@@ -19,5 +19,5 @@ const clients: Record<ServiceId, ApiClient> = { parcel: parcelApi, room: roomApi
 
 export const apiFor = (service: ServiceId) => clients[service];
 
-/** Every back-end, for code that runs once per service (hubs, unread counts). */
+/** Every back-end, for code that runs once per service (users/me, push tokens). */
 export const services = Object.keys(clients) as ServiceId[];

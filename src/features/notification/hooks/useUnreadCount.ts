@@ -1,30 +1,28 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 
-import type { ServiceId } from '@/core/api/ApiError';
-import { services } from '@/core/api/clients';
 import { qk } from '@/core/query/keys';
-import { useSessionStore } from '@/core/session/sessionStore';
 
-import { notificationsApi } from '../api/notification.api';
+import type { NotificationSource } from '../types';
+import { useNotificationSources } from './useNotificationSources';
 
-const unreadQuery = (service: ServiceId, connected: boolean) => ({
-  queryKey: qk.notifications.unread(service),
-  queryFn: () => notificationsApi.totalUnread(service),
-  enabled: connected,
+const unreadQuery = (source: NotificationSource) => ({
+  queryKey: qk.notifications.unread(source.id),
+  queryFn: () => source.unreadCount(),
   // SignalR pushes updates; polling is only a fallback when the socket is down.
   refetchInterval: 120_000,
 });
 
-export function useUnreadCount(service: ServiceId) {
-  const connected = useSessionStore((s) => s.connected[service]);
-  return useQuery(unreadQuery(service, connected));
+/** Unread count of each source the user may use, by source id (0 while unknown or failed). */
+export function useUnreadCounts(): Record<string, number> {
+  const sources = useNotificationSources();
+  return useQueries({
+    queries: sources.map(unreadQuery),
+    combine: (results) => Object.fromEntries(results.map((result, index) => [sources[index].id, Number(result.data) || 0])),
+  });
 }
 
-/** Badge on the bell: unread notifications of every back-end the user may call. */
+/** Badge on the bell: unread notifications of every source. */
 export function useTotalUnread() {
-  const connected = useSessionStore((s) => s.connected);
-  return useQueries({
-    queries: services.map((service) => unreadQuery(service, connected[service])),
-    combine: (results) => results.reduce((sum, result) => sum + (Number(result.data) || 0), 0),
-  });
+  const counts = useUnreadCounts();
+  return Object.values(counts).reduce((sum, count) => sum + count, 0);
 }

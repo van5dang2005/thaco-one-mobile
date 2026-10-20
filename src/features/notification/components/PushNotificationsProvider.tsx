@@ -1,16 +1,12 @@
 import { router, type Href } from 'expo-router';
 import { useEffect } from 'react';
 
-import type { ServiceId } from '@/core/api/ApiError';
-import { services } from '@/core/api/clients';
+import { notifications, type NotificationsModule } from '@/core/notifications/permission';
+import { registerPushToken } from '@/core/notifications/push';
 import { useSessionStore } from '@/core/session/sessionStore';
 import { kv, kvKeys } from '@/core/storage/kv';
-import { hrefForNotification } from '@/features/notification/utils/routing';
 
-import { notifications, type NotificationsModule } from './permission';
-import { registerPushToken } from './push';
-
-type PushData = { service?: string; href?: string; bookingId?: string | null };
+import { findNotificationSource } from '../utils/sources';
 
 const pushModule = notifications();
 
@@ -19,16 +15,15 @@ pushModule?.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: false, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
 });
 
-/** Where a tapped push goes: its `href` (an app route) when the back-end sends one, else the service's default. */
-function hrefForPush(data: PushData): Href | null {
+/** Where a tapped push goes: its `href` (an app route) when the back-end sends one, else what its source decides. */
+function hrefForPush(data: Record<string, unknown>): Href | null {
   if (typeof data.href === 'string' && data.href.startsWith('/')) return data.href as Href;
-  const service = services.find((s) => s === data.service) as ServiceId | undefined;
-  return service ? hrefForNotification(service, data.bookingId) : null;
+  return findNotificationSource(data.service)?.hrefForPush(data) ?? null;
 }
 
 function openResponse(n: NotificationsModule, response: ReturnType<NotificationsModule['getLastNotificationResponse']>) {
   if (!response || response.actionIdentifier !== n.DEFAULT_ACTION_IDENTIFIER) return;
-  const href = hrefForPush((response.notification.request.content.data ?? {}) as PushData);
+  const href = hrefForPush(response.notification.request.content.data ?? {});
   n.clearLastNotificationResponse();
   if (href) router.push(href);
 }

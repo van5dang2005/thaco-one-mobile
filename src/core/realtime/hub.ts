@@ -1,26 +1,9 @@
 import { HubConnectionBuilder, HubConnectionState, LogLevel, type HubConnection, type ILogger } from '@microsoft/signalr';
 
-import type { ServiceId } from '@/core/api/ApiError';
-import { apiFor } from '@/core/api/clients';
 import { tokenStore } from '@/core/session/tokenStore';
 
-export type ReceiveNotificationPayload = {
-  title?: string | null;
-  content?: string | null;
-  // The room service adds these for booking notifications.
-  bookingId?: string | null;
-  groupId?: string | null;
-  roomId?: string | null;
-  code?: string | null;
-};
-
-export type ResourceUpdatedPayload = { resourceType?: number | null; resourceId?: string | null; title?: string | null };
-
-export type HubHandlers = {
-  onNotification: (service: ServiceId, payload: ReceiveNotificationPayload) => void;
-  onPermissionsUpdated: (service: ServiceId) => void;
-  onResourceUpdated: (service: ServiceId, payload: ResourceUpdatedPayload) => void;
-};
+/** Hub event name → handler of its payload (`{}` when the server sends none). */
+export type HubEvents = Record<string, (payload: unknown) => void>;
 
 /** SignalR logs through console by default; route only real errors to the dev console. */
 const quietLogger: ILogger = {
@@ -31,16 +14,18 @@ const quietLogger: ILogger = {
 
 const RETRY_DELAYS = [2_000, 5_000, 15_000, 30_000, 60_000];
 
-/** One connection to `/hubs/notifications` of a back-end, with token refresh and backoff. */
+/** One SignalR connection to a back-end's hub, with token refresh and backoff. */
 export class ServiceHub {
   private connection: HubConnection | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private attempts = 0;
   private stopped = true;
 
+  /** `ping`: any authenticated call of that back-end, made when connecting fails so an expired token gets refreshed. */
   constructor(
-    private readonly service: ServiceId,
-    private readonly handlers: HubHandlers,
+    private readonly url: string,
+    private readonly events: HubEvents,
+    private readonly ping: () => Promise<unknown>,
   ) {}
 
   start() {
@@ -59,7 +44,7 @@ export class ServiceHub {
 
   private build() {
     const connection = new HubConnectionBuilder()
-      .withUrl(`${apiFor(this.service).baseUrl}/hubs/notifications`, {
+      .withUrl(this.url, {
         // Read lazily so reconnects pick up refreshed tokens.
         accessTokenFactory: () => tokenStore.get()?.token ?? '',
       })
@@ -67,9 +52,7 @@ export class ServiceHub {
       .configureLogging(quietLogger)
       .build();
 
-    connection.on('ReceiveNotification', (payload: ReceiveNotificationPayload) => this.handlers.onNotification(this.service, payload ?? {}));
-    connection.on('PermissionsUpdated', () => this.handlers.onPermissionsUpdated(this.service));
-    connection.on('ResourceUpdated', (payload: ResourceUpdatedPayload) => this.handlers.onResourceUpdated(this.service, payload ?? {}));
+    for (const [name, handler] of Object.entries(this.events)) connection.on(name, (payload: unknown) => handler(payload ?? {}));
     connection.onclose(() => {
       if (!this.stopped) this.scheduleRetry();
     });
@@ -85,9 +68,7 @@ export class ServiceHub {
       this.attempts = 0;
     } catch {
       // Expired token: any authenticated REST call refreshes it; the next attempt uses the new one.
-      void apiFor(this.service)
-        .get<number>('/api/notifications/total-unread')
-        .catch(() => undefined);
+      void this.ping().catch(() => undefined);
       this.scheduleRetry();
     }
   }

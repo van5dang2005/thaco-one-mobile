@@ -13,8 +13,11 @@ export const qk = {
   },
   notifications: {
     root: ['notifications'] as const,
-    list: (service: ServiceId) => ['notifications', service, 'list'] as const,
-    unread: (service: ServiceId) => ['notifications', service, 'unread'] as const,
+    /** Every merged feed (`feed` of any set of sources): realtime refreshes them all. */
+    feeds: ['notifications', 'feed'] as const,
+    /** `FeedPage`s of the given source ids, comma-joined. */
+    feed: (sourceIds: string) => ['notifications', 'feed', sourceIds] as const,
+    unread: (source: string) => ['notifications', source, 'unread'] as const,
   },
   rooms: {
     root: ['rooms'] as const,

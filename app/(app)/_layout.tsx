@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { PushNotificationsProvider } from '@/core/notifications/PushNotificationsProvider';
-import { RealtimeProvider } from '@/core/realtime/RealtimeProvider';
+import { PushNotificationsProvider, RealtimeProvider } from '@/features/notification';
 
 export default function AppLayout() {
   return (
