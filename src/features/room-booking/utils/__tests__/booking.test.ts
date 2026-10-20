@@ -33,6 +33,26 @@ describe('roomLabels', () => {
     });
   });
 
+  it('splits mixed names by the start each shares with another room, or by a trailing number', () => {
+    expect(
+      roomLabels([room('a', 'Phòng họp 1.1'), room('b', 'Phòng họp 2.3'), room('c', 'Hội trường 01'), room('d', 'Phòng Khánh tiết'), room('e', 'Boardroom')]),
+    ).toEqual({
+      a: { group: 'Phòng họp', name: '1.1' },
+      b: { group: 'Phòng họp', name: '2.3' },
+      c: { group: 'Hội trường', name: '01' },
+      d: { group: 'Phòng', name: 'Khánh tiết' },
+      e: { group: '', name: 'Boardroom' },
+    });
+  });
+
+  it('keeps a mixed name whole when it is all start', () => {
+    expect(roomLabels([room('a', 'Phòng'), room('b', 'Phòng 2'), room('c', 'Hội trường')])).toEqual({
+      a: { group: '', name: 'Phòng' },
+      b: { group: 'Phòng', name: '2' },
+      c: { group: '', name: 'Hội trường' },
+    });
+  });
+
   it('keeps a single room whole', () => {
     expect(roomLabels([room('a', 'Phòng họp 18.1')])).toEqual({ a: { group: '', name: 'Phòng họp 18.1' } });
   });

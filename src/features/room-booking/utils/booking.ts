@@ -165,6 +165,10 @@ export function roomHours(room: Pick<RoomDto, 'openedAt' | 'closedAt'> | null | 
  * ("MAZDA _Phòng họp 1" → MAZDA / 1); then the leading words every name shares drop out ("Phòng họp 18.1",
  * "Phòng họp 18.2" → 18.1, 18.2) and, where there is no brand, become the group (Phòng họp / 18.1). Names stay whole
  * with a single room, or when one name is nothing but the shared words.
+ *
+ * When the names do not all start alike (Chu Lai: "Phòng họp 1.1"…, "Hội trường 01", "Phòng Khánh tiết"), each takes
+ * the longest start it shares with another room (Phòng họp / 1.1, Phòng / Khánh tiết), or else its trailing number
+ * (Hội trường / 01). A name that is all start, or a lone word, stays whole.
  */
 export function roomLabels(rooms: Pick<RoomDto, 'id' | 'name'>[]): Record<string, { group: string; name: string }> {
   const parts = rooms.map((r) => {
@@ -173,15 +177,30 @@ export function roomLabels(rooms: Pick<RoomDto, 'id' | 'name'>[]): Record<string
     return cut > 0 ? { group: full.slice(0, cut).trim(), rest: full.slice(cut + 1).trim() } : { group: '', rest: full };
   });
   const words = parts.map((p) => p.rest.split(/\s+/).filter(Boolean));
+  const sameStart = (a: string[], b: string[]) => {
+    let n = 0;
+    while (n < a.length && n < b.length && a[n].toLowerCase() === b[n].toLowerCase()) n++;
+    return n;
+  };
   let shared = 0;
   while (rooms.length > 1 && words.every((w) => shared < w.length && w[shared].toLowerCase() === words[0][shared].toLowerCase())) shared++;
+  const mixed = shared === 0 && words.filter((w) => w.length).length > 1;
   if (words.some((w) => w.length === shared)) shared = 0;
   const common = shared ? words[0].slice(0, shared).join(' ') : '';
+  /** Mixed names: how many leading words of room `i` make its group. */
+  const ownLead = (i: number) => {
+    const w = words[i];
+    const best = Math.max(0, ...words.map((other, j) => (j === i ? 0 : sameStart(w, other))));
+    if (best >= w.length) return 0;
+    if (best > 0) return best;
+    return w.length > 1 && /\d/.test(w[w.length - 1]) ? w.length - 1 : 0;
+  };
   return Object.fromEntries(
     rooms.map((r, i) => {
-      if (!shared) return [r.id, { group: parts[i].group, name: parts[i].rest }];
-      const rest = words[i].slice(shared).join(' ');
-      return [r.id, { group: parts[i].group || common, name: rest.charAt(0).toUpperCase() + rest.slice(1) }];
+      const lead = shared || (mixed ? ownLead(i) : 0);
+      if (!lead) return [r.id, { group: parts[i].group, name: parts[i].rest }];
+      const rest = words[i].slice(lead).join(' ');
+      return [r.id, { group: parts[i].group || common || words[i].slice(0, lead).join(' '), name: rest.charAt(0).toUpperCase() + rest.slice(1) }];
     }),
   );
 }

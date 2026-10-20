@@ -52,6 +52,9 @@ const DURATIONS = [30, 60, 90, 120];
  * Gap between the toolbar and the area, where the header's picture shows: 28pt on today's phones, down to 10pt on a
  * 667pt-tall screen (iPhone SE), so a short screen keeps its hours for the schedule.
  */
+/** Backdrop of the week band: the header's own blue (navy at night), deepened, over the picture. */
+const WEEK_BAND = { light: 'rgba(0, 48, 100, 0.62)', dark: 'rgba(5, 11, 22, 0.66)' };
+
 const pictureGap = (windowHeight: number) => Math.round(Math.min(28, Math.max(10, 10 + (windowHeight - 667) / 6)));
 
 /**
@@ -263,13 +266,13 @@ export function RoomCalendarScreen() {
           }}
         />
       </View>
-      {/* The week on a frosted band, so the picture never competes with the dates. */}
-      <View className="mt-4 flex-row items-center rounded-[16px] p-1" style={{ backgroundColor: onBlue(0.1), borderWidth: 1, borderColor: onBlue(0.16) }}>
+      {/* The week on a deep frosted band: the towers only show faintly through it, so the dates (weekends at 45%) stay clear. */}
+      <View className="mt-4 flex-row items-center rounded-[16px] p-1" style={{ backgroundColor: scheme === 'dark' ? WEEK_BAND.dark : WEEK_BAND.light, borderWidth: 1, borderColor: onBlue(0.16) }}>
         <Pressable accessibilityRole="button" accessibilityLabel={t('rooms.previousDay')} onPress={() => shift(-1)} hitSlop={4} className="h-14 w-7 items-center justify-center active:opacity-60">
           <Icon icon={ChevronLeftIcon} size={17} weight="bold" rawColor={onBlue(0.8)} />
         </Pressable>
         <View className="flex-1">
-          <DayStrip testID="rooms-day" value={dateKey} today={today} onChange={selectDay} start={weekStart} marked={busyDays} className="" />
+          <DayStrip testID="rooms-day" variant="calendar" value={dateKey} today={today} onChange={selectDay} start={weekStart} marked={busyDays} className="" />
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={t('rooms.nextDay')} onPress={() => shift(1)} hitSlop={4} className="h-14 w-7 items-center justify-center active:opacity-60">
           <Icon icon={ChevronRightIcon} size={17} weight="bold" rawColor={onBlue(0.8)} />
@@ -449,7 +452,7 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
   const { fg, soft } = useHeaderColors();
   return (
     <View
-      className="h-9 flex-row rounded-full p-[3px]"
+      className="h-7 flex-row rounded-full p-[2px]"
       style={scheme === 'dark' ? { backgroundColor: onBlue(0.1), borderWidth: 1, borderColor: onBlue(0.16) } : { backgroundColor: 'rgba(0, 0, 0, 0.14)' }}
     >
       {(['day', 'week'] as const).map((m) => {
@@ -461,10 +464,11 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => onChange(m)}
-            className="justify-center rounded-full px-3.5 active:opacity-80"
+            hitSlop={{ top: 8, bottom: 8 }}
+            className="justify-center rounded-full px-2.5 active:opacity-80"
             style={active ? [shadows.raised, { backgroundColor: fg }] : undefined}
           >
-            <Text weight={active ? 'bold' : 'semibold'} style={{ fontSize: 12.5, lineHeight: 16, color: active ? colors.header : soft }}>
+            <Text weight={active ? 'bold' : 'semibold'} style={{ fontSize: 11.5, lineHeight: 14, color: active ? colors.header : soft }}>
               {m === 'day' ? t('rooms.dayMode') : t('rooms.weekMode')}
             </Text>
           </Pressable>
