@@ -1311,6 +1311,8 @@ const vi = {
       all: 'Tất cả',
       filterCount: '{{label}} {{count}}',
       empty: 'Không có lịch khách nào ở mục này',
+      searchPlaceholder: 'Tìm đoàn khách',
+      searchEmpty: 'Không tìm thấy đoàn khách phù hợp',
     },
     scan: {
       title: 'Quét mã QR',

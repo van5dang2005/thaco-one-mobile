@@ -46,7 +46,10 @@ export const qk = {
   },
   guests: {
     root: ['guests'] as const,
-    dashboard: ['guests', 'dashboard'] as const,
+    /** Every list page: a check-in refreshes them all. */
+    schedulesRoot: ['guests', 'schedules'] as const,
+    /** Pages of a `GuestScheduleFilter`. */
+    schedules: (filter: Record<string, unknown>) => ['guests', 'schedules', filter] as const,
     visit: (qr: string) => ['guests', 'visit', qr] as const,
   },
   /** Văn thư. The root moved off `documents` with the move to the real API: mock-shaped data persisted under it is never read back. */

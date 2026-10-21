@@ -1311,6 +1311,8 @@ const en: Translation = {
       all: 'All',
       filterCount: '{{label}} {{count}}',
       empty: 'No visits here',
+      searchPlaceholder: 'Search guest groups',
+      searchEmpty: 'No matching guest groups',
     },
     scan: {
       title: 'Scan QR code',

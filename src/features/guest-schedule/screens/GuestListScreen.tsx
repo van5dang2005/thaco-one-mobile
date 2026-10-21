@@ -1,50 +1,76 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { type NativeScrollEvent, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { flattenPages } from '@/core/api/types';
+import { qk } from '@/core/query/keys';
 import { useTheme } from '@/core/theme/ThemeProvider';
 import { formatKey, todayKey, weekdayOf } from '@/core/time/vn';
+import { useDebounced } from '@/shared/hooks/useDebounced';
 import { usePullRefresh } from '@/shared/hooks/usePullRefresh';
 import { FilterChip } from '@/shared/ui/Chip';
-import { UsersIcon } from '@/shared/ui/icons';
+import { SearchIcon, UsersIcon } from '@/shared/ui/icons';
 import { CardSkeleton } from '@/shared/ui/Skeleton';
 import { EmptyState, ErrorState } from '@/shared/ui/StateViews';
+import { Text } from '@/shared/ui/Text';
+import { TextField } from '@/shared/ui/TextField';
 
 import { GuestPage, guestPageColors } from '../components/GuestPage';
 import { GuestScene, useGuestScene } from '../components/GuestScene';
 import { GuestTopBar } from '../components/GuestTopBar';
 import { VisitCard } from '../components/VisitCard';
-import { useGuestDashboard } from '../hooks/useGuestDashboard';
-import type { GuestVisitStatus } from '../types';
+import { useGuestSchedules } from '../hooks/useGuestSchedules';
+import type { GuestVisitTab } from '../types';
 import { byStart } from '../utils/dashboard';
 
-type Filter = 'all' | GuestVisitStatus;
-const FILTERS: Filter[] = ['all', 'pending', 'confirmed', 'checkedIn', 'checkedOut'];
+const TABS: GuestVisitTab[] = ['all', 'pending', 'confirmed', 'checkedIn', 'checkedOut'];
+/** How close to the end of the list (pt) the next page starts loading. */
+const LOAD_AHEAD = 400;
+
+const nearEnd = ({ layoutMeasurement, contentOffset, contentSize }: NativeScrollEvent) =>
+  layoutMeasurement.height + contentOffset.y >= contentSize.height - LOAD_AHEAD;
 
 /**
  * "Xem tất cả" of the dashboard: the title on the picture of the plant's gate, cut just under the coach driving in, then
- * on a square-topped grey panel the status filters and every visit of the day in time order.
+ * on a square-topped grey panel a search field, the status tabs and the day's visits in time order, page by page.
  */
 export function GuestListScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { scheme } = useTheme();
   const scene = useGuestScene();
-  const { data, isLoading, isError, error, refetch } = useGuestDashboard();
-  const pull = usePullRefresh(refetch);
-  const [filter, setFilter] = useState<Filter>('all');
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState<GuestVisitTab>('all');
+  const [search, setSearch] = useState('');
+  const keyword = useDebounced(search.trim(), 350);
   const today = todayKey();
 
-  const visits = [...(data?.today ?? [])].sort(byStart);
-  const count = (f: Filter) => (f === 'all' ? visits.length : visits.filter((v) => v.status === f).length);
-  const shown = filter === 'all' ? visits : visits.filter((v) => v.status === filter);
-  const label = (f: Filter) => (f === 'all' ? t('guestSchedule.list.all') : t(`guestSchedule.dashboard.status.${f}`));
+  // The counters of the whole day, from the dashboard's own query; the list asks for the tab and the search.
+  const counts = useGuestSchedules({ day: today, tab: 'all' }).data?.pages[0]?.counts;
+  const query = useGuestSchedules({ day: today, tab, search: keyword || undefined });
+  const pull = usePullRefresh(() => queryClient.refetchQueries({ queryKey: qk.guests.schedulesRoot, type: 'active' }));
+
+  const visits = flattenPages(query.data?.pages).sort(byStart);
+  // The summary has no figure for inside and gone apart, so those two show the tab's own total once it is open.
+  const count = (f: GuestVisitTab) =>
+    f === 'all' ? counts?.total : f === 'pending' ? counts?.pending : f === 'confirmed' ? counts?.confirmed : f === tab && !keyword ? query.data?.pages[0]?.totalCount : undefined;
+  const label = (f: GuestVisitTab) => {
+    const name = f === 'all' ? t('guestSchedule.list.all') : t(`guestSchedule.dashboard.status.${f}`);
+    const n = count(f);
+    return n === undefined ? name : t('guestSchedule.list.filterCount', { label: name, count: n });
+  };
 
   return (
     <GuestPage testID="guests-list">
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 8 }}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={200}
+        onScroll={({ nativeEvent }) => {
+          if (nearEnd(nativeEvent) && query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+        }}
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />}
       >
         {/* The picture, edge to edge, with the toolbar on it; the panel below covers the rest of the drawing. */}
@@ -63,31 +89,42 @@ export function GuestListScreen() {
           className="flex-grow"
           style={{ backgroundColor: guestPageColors[scheme], paddingBottom: Math.max(insets.bottom, 12) + 16 }}
         >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4 flex-grow-0" contentContainerClassName="gap-2 px-4">
-            {FILTERS.map((f) => (
-              <FilterChip
-                key={f}
-                testID={`guests-list-filter-${f}`}
-                selected={filter === f}
-                label={t('guestSchedule.list.filterCount', { label: label(f), count: count(f) })}
-                onPress={() => setFilter(f)}
-              />
+          <View className="px-4 pt-4">
+            <TextField
+              testID="guests-list-search"
+              leftIcon={SearchIcon}
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t('guestSchedule.list.searchPlaceholder')}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 flex-grow-0" contentContainerClassName="gap-2 px-4">
+            {TABS.map((f) => (
+              <FilterChip key={f} testID={`guests-list-filter-${f}`} selected={tab === f} label={label(f)} onPress={() => setTab(f)} />
             ))}
           </ScrollView>
 
           <View className="mt-4 gap-2.5 px-4">
-            {isLoading ? (
+            {query.isLoading ? (
               <>
                 <CardSkeleton lines={3} />
                 <CardSkeleton lines={3} />
               </>
-            ) : isError && !data ? (
-              <ErrorState error={error} onRetry={() => void refetch()} />
-            ) : shown.length ? (
-              shown.map((visit) => <VisitCard key={visit.id} visit={visit} />)
+            ) : query.isError && !visits.length ? (
+              <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+            ) : visits.length ? (
+              visits.map((visit) => <VisitCard key={visit.id} visit={visit} />)
+            ) : keyword ? (
+              <EmptyState testID="guests-list-empty" icon={SearchIcon} message={t('guestSchedule.list.searchEmpty')} />
             ) : (
-              <EmptyState testID="guests-list-empty" icon={UsersIcon} message={filter === 'all' ? t('guestSchedule.dashboard.todayEmpty') : t('guestSchedule.list.empty')} />
+              <EmptyState testID="guests-list-empty" icon={UsersIcon} message={tab === 'all' ? t('guestSchedule.dashboard.todayEmpty') : t('guestSchedule.list.empty')} />
             )}
+            {query.isFetchingNextPage ? <Text className="py-2 text-center text-meta text-muted">{t('common.loadMore')}</Text> : null}
           </View>
         </View>
       </ScrollView>

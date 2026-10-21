@@ -1,3 +1,6 @@
+import type { Paginated } from '@/core/api/types';
+import type { DateKey } from '@/core/time/vn';
+
 /** `GET /api/GuestSchedules/mobile/qr/{qrCode}`: the fields the app reads (times are UTC). */
 export type GuestScheduleDto = {
   guestScheduleId: string;
@@ -34,30 +37,75 @@ export type GuestVisit = {
   location?: string | null;
 };
 
-/** Where a visit stands on the dashboard: waiting for the host's confirmation, confirmed, inside, gone. */
-export type GuestVisitStatus = 'pending' | 'confirmed' | 'checkedIn' | 'checkedOut';
+/** `securityCheckInStatus` of the list: where the group stands at the gate. */
+export enum SecurityCheckInStatus {
+  /** Chờ bảo vệ xác nhận. */
+  Pending = 0,
+  /** Đã vào cổng. */
+  CheckedIn = 1,
+  /** Đã ra cổng. */
+  CheckedOut = 2,
+}
+
+/** An item of `GET /api/security/guest-schedules/mobile` (times are UTC). */
+export type GuestScheduleListItemDto = {
+  guestScheduleId: string;
+  guestCode?: string | null;
+  guestName?: string | null;
+  /** The code the guests' QR holds. */
+  qrToken?: string | null;
+  guestTypeId?: string | null;
+  /** "Khách hàng", "Đối tác"… */
+  guestTypeName?: string | null;
+  guestCount?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  createdAt?: string | null;
+  securityCheckInStatus?: SecurityCheckInStatus | null;
+  workingUnits?: { workingUnitId: string; workingUnitName?: string | null }[] | null;
+};
+
+/** `GET /api/security/guest-schedules/mobile`: a page of visits and the counters of the whole filter. */
+export type GuestSchedulePageDto = Paginated<GuestScheduleListItemDto> & {
+  summary?: {
+    /** Every group the filter holds. */
+    allCount?: number | null;
+    /** `securityCheckInStatus` 0. */
+    pendingCount?: number | null;
+    /** `securityCheckInStatus` 1 only for now; the back-end will add 2 (đã ra cổng). */
+    checkInCount?: number | null;
+  } | null;
+};
+
+/** Where a visit stands at the gate: waiting for the guard, inside, gone. */
+export type GuestVisitStatus = 'pending' | 'checkedIn' | 'checkedOut';
+
+/** A tab of the list: every visit, one status, or `confirmed` (the guard has let them in: inside or gone). */
+export type GuestVisitTab = 'all' | 'confirmed' | GuestVisitStatus;
 
 /** A visit in the dashboard's "Lịch khách hôm nay" list. */
 export type GuestScheduleItem = {
   id: string;
   /** "Đoàn KIA Hàn Quốc". */
   groupName: string;
-  /** The guests' company. */
-  company?: string | null;
-  /** Who receives them: the host unit or person. */
+  /** "Khách hàng", "Đối tác"… */
+  guestType?: string | null;
+  /** Who receives them: the receiving units. */
   host?: string | null;
-  /** ISO, UTC. */
+  /** Working period of the visit (ISO, UTC). */
   from: string;
   to: string;
   guestCount: number;
   status: GuestVisitStatus;
 };
 
-/** "Quản lý lịch khách" dashboard: the counters and today's visits. */
-export type GuestDashboard = {
-  stats: { total: number; pending: number; confirmed: number };
-  today: GuestScheduleItem[];
-};
+/** What a list request asks for: the visits of a Vietnam day, under a tab, matching a search. */
+export type GuestScheduleFilter = { day: DateKey; tab: GuestVisitTab; search?: string };
+
+/** The counters over the whole filter, whatever the tab. */
+export type GuestScheduleCounts = { total: number; pending: number; confirmed: number };
+
+export type GuestSchedulePage = Paginated<GuestScheduleItem> & { counts: GuestScheduleCounts };
 
 /** A gate check-in (the guard confirms the group at the gate). */
 export type GuestCheckInInput = {

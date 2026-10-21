@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -111,6 +111,7 @@ function VisitHeader({ visit }: { visit: GuestVisit }) {
 
 function CheckInForm({ visit, header }: { visit: GuestVisit; header: ReactNode }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [checkInAt, setCheckInAt] = useState(() => new Date());
   const [count, setCount] = useState(visit.guestCount);
   const [note, setNote] = useState('');
@@ -124,11 +125,14 @@ function CheckInForm({ visit, header }: { visit: GuestVisit; header: ReactNode }
   const submit = useMutation({
     mutationFn: () =>
       guestApi.checkIn({ checkInAt: checkInAt.toISOString(), actualGuestCount: count, note: note.trim() || undefined }, visit),
-    onSuccess: (done) =>
+    onSuccess: (done) => {
+      // The group has moved tab on the dashboard and the list.
+      void queryClient.invalidateQueries({ queryKey: qk.guests.schedulesRoot });
       router.replace({
         pathname: '/guests/success',
         params: { name: done.visit.groupName, at: done.checkInAt, count: String(done.actualGuestCount), location: done.visit.location ?? '' },
-      }),
+      });
+    },
     onError: (e) => toast.error(guestErrorMessage(e, t)),
   });
 

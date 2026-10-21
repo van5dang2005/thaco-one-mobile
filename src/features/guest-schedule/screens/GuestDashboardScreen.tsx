@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { flattenPages } from '@/core/api/types';
 import { useTheme } from '@/core/theme/ThemeProvider';
 import { formatKey, todayKey, weekdayOf } from '@/core/time/vn';
 import { useNow } from '@/shared/hooks/useNow';
@@ -21,7 +22,7 @@ import { GuestPage, guestPageColors } from '../components/GuestPage';
 import { GuestScene, useGuestScene } from '../components/GuestScene';
 import { GuestTopBar } from '../components/GuestTopBar';
 import { VisitCard } from '../components/VisitCard';
-import { useGuestDashboard } from '../hooks/useGuestDashboard';
+import { useGuestSchedules } from '../hooks/useGuestSchedules';
 import type { GuestScheduleItem } from '../types';
 import { byStart, visitStage } from '../utils/dashboard';
 
@@ -55,11 +56,12 @@ export function GuestDashboardScreen() {
   /** Height of the pinned counters, measured; starts at their usual height so nothing jumps on the first frame. */
   const [statsHeight, setStatsHeight] = useState(STATS_HEIGHT);
   const now = useNow(60_000);
-  const { data, isLoading, isError, error, refetch } = useGuestDashboard();
-  const pull = usePullRefresh(refetch);
   const today = todayKey(now);
+  const { data, isLoading, isError, error, refetch } = useGuestSchedules({ day: today, tab: 'all' });
+  const pull = usePullRefresh(refetch);
 
-  const visits = [...(data?.today ?? [])].sort(byStart);
+  const counts = data?.pages[0]?.counts;
+  const visits = flattenPages(data?.pages).sort(byStart);
   const bottomEdge = Math.max(insets.bottom, 12);
   // The picture shown from the toolbar's top down to the panel: the drawing, made taller with yard if the counters need it.
   const picture = Math.max(scene.height - scene.lift, TOOLBAR_HEIGHT + STATS_SHIFT + statsHeight + STATS_GAP * 2);
@@ -82,11 +84,11 @@ export function GuestDashboardScreen() {
           />
           <View testID="guests-stats" onLayout={(e) => setStatsHeight(e.nativeEvent.layout.height)} className="absolute left-4 right-4" style={{ top: statsTop }}>
             <GlassCard style={{ flexDirection: 'row' }}>
-              <KpiCell tone="wait" icon={UsersIcon} label={t('guestSchedule.dashboard.statTotal')} value={data?.stats.total} />
+              <KpiCell tone="wait" icon={UsersIcon} label={t('guestSchedule.dashboard.statTotal')} value={counts?.total} />
               <StatRule />
-              <KpiCell tone="warn" icon={HourglassIcon} label={t('guestSchedule.dashboard.statPending')} value={data?.stats.pending} />
+              <KpiCell tone="warn" icon={HourglassIcon} label={t('guestSchedule.dashboard.statPending')} value={counts?.pending} />
               <StatRule />
-              <KpiCell tone="ok" icon={CircleCheckIcon} label={t('guestSchedule.dashboard.statConfirmed')} value={data?.stats.confirmed} />
+              <KpiCell tone="ok" icon={CircleCheckIcon} label={t('guestSchedule.dashboard.statConfirmed')} value={counts?.confirmed} />
             </GlassCard>
           </View>
         </View>
