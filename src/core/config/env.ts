@@ -42,8 +42,9 @@ export const env = {
     },
     PAYTIME: {
       url: {
-        ios: process.env.EXPO_PUBLIC_PAYTIME_IOS_URL ?? 'thacopaytime://',
-        android: process.env.EXPO_PUBLIC_PAYTIME_ANDROID_URL ?? 'thacopaytime://',
+        // Bundle id as the scheme, like THACO ESIGN (Expo registers it on iOS).
+        ios: process.env.EXPO_PUBLIC_PAYTIME_IOS_URL ?? 'vn.com.thaco.paytime://',
+        android: process.env.EXPO_PUBLIC_PAYTIME_ANDROID_URL ?? 'vn.com.thaco.paytime://',
       },
       storeUrl: {
         ios: process.env.EXPO_PUBLIC_PAYTIME_IOS_STORE_URL ?? 'https://apps.apple.com/vn/app/thaco-paytime/id6762419210',

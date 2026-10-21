@@ -27,7 +27,7 @@ export function filterModules<M extends Pick<HomeModule, 'permission'>>(modules:
   return modules.filter((module) => canSeeModule(module, ctx));
 }
 
-/** The device can open it: it names a scheme (`https:`, `thacopaytime:`…), unlike a path relative to the portal. */
+/** The device can open it: it names a scheme (`https:`, `vn.com.thaco.paytime:`…), unlike a path relative to the portal. */
 const OPENABLE_URL = /^[a-z][a-z\d+.-]*:/i;
 
 /** Portal names lead with the kind of thing ("Phần mềm Quản lý bưu phẩm", "PM Văn Thư"). */
