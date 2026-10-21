@@ -25,6 +25,7 @@ import type {
   NhanVienDto,
   TepTinDto,
   ThanhPhanDto,
+  ThongBaoDto,
   ThanhPhanResponseDto,
   UserInfoDto,
   VanBanDenDto,
@@ -57,6 +58,7 @@ function unwrap<T>(reply: VtReply<T> | undefined, path: string): T {
 
 const get = async <T>(path: string, query?: Query) => unwrap(await documentApi.get<VtReply<T>>(path, { query }), path);
 const post = async <T>(path: string, body?: unknown, query?: Query) => unwrap(await documentApi.post<VtReply<T>>(path, body, { query }), path);
+const put = async <T>(path: string) => unwrap(await documentApi.put<VtReply<T>>(path), path);
 
 /** Every page of a list, the later ones in parallel. */
 async function allPages<T>(path: string, query: Query): Promise<T[]> {
@@ -214,4 +216,16 @@ export const officialDocumentApi = {
     const [di, noiBo] = await Promise.all([registered(2, from, today, false), registered(3, from, today, false)]);
     return [...di, ...noiBo].filter(isStampable).map(stampFromRow);
   },
+
+  /** `GET /api/ThongBao`: my latest 50 notifications, newest first (the back-end does not page further). */
+  notifications: async () => (await get<ThongBaoDto[] | null>('/api/ThongBao')) ?? [],
+
+  /** `GET /api/ThongBao/UnreadCount`. */
+  unreadNotifications: async () => Number(await get<number | null>('/api/ThongBao/UnreadCount')) || 0,
+
+  /** `PUT /api/ThongBao/{id}/Doc`. */
+  markNotificationRead: (id: string) => put<unknown>(`/api/ThongBao/${id}/Doc`),
+
+  /** `PUT /api/ThongBao/DocTatCa`. */
+  markAllNotificationsRead: () => put<unknown>('/api/ThongBao/DocTatCa'),
 };

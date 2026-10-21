@@ -33,7 +33,7 @@ export const env = {
       url: {
         ios: process.env.EXPO_PUBLIC_ESIGN_IOS_URL ?? 'com.thaco.esign://',
         // THACO ESIGN registers no link on Android: the Play Store page shows "Mở" when it is installed.
-        android: process.env.EXPO_PUBLIC_ESIGN_ANDROID_URL ?? '',
+        android: process.env.EXPO_PUBLIC_ESIGN_ANDROID_URL ?? 'com.thaco.esign://',
       },
       storeUrl: {
         ios: process.env.EXPO_PUBLIC_ESIGN_IOS_STORE_URL ?? 'https://apps.apple.com/vn/app/thaco-esign/id6759150412',

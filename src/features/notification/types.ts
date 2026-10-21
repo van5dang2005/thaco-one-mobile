@@ -28,6 +28,9 @@ export type NotificationPage = { items: AppNotification[]; nextPage: number | un
 
 export type NotificationLook = { icon: AppIcon; tone: Tone };
 
+/** Colour of a module's tab: its Home tile's group colour (meeting blue, parcel green, document violet). */
+export type NotificationAccent = 'meeting' | 'parcel' | 'document';
+
 /** A notification arriving live (SignalR): what its toast shows and opens. */
 export type LiveNotification = Pick<AppNotification, 'title' | 'body' | 'href'>;
 
@@ -45,6 +48,9 @@ export type NotificationSource = {
   label: (t: TFunction) => string;
   /** Module name in "Xóa tất cả thông báo của {{service}}?". */
   name: (t: TFunction) => string;
+  /** Its tab: the module's Home glyph and colour. */
+  icon: AppIcon;
+  accent: NotificationAccent;
   /** Glyph and tone of a row (CLAUDE.md §5): `danger` overdue / rejected, `warn` due soon, `ok` done, `off` cancelled. */
   appearance: (notification: AppNotification) => NotificationLook;
   /** Whether the user may call the back-end (apps portal); a selector of the session store. */

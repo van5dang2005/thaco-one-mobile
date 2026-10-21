@@ -82,6 +82,8 @@ export const roomNotificationSource: NotificationSource = {
   }),
   label: (t) => t('notifications.tabRoom'),
   name: (t) => t('services.room'),
+  icon: CalendarCheckIcon,
+  accent: 'meeting',
   appearance: roomLook,
   refreshKeys: [qk.bookings.root],
 };

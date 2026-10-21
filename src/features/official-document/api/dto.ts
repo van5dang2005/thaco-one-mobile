@@ -185,3 +185,18 @@ export type ThanhPhanResponseDto = {
   items?: ThanhPhanDto[] | null;
   grantablePermissions?: { isFullGrant?: boolean; canGrantXem?: boolean; canGrantTai?: boolean; canGrantChiaSe?: boolean } | null;
 };
+
+/**
+ * `GET /api/ThongBao` row (`ThongBaoViewModel`). `tieuDe` is always empty; `refUrl` is the web route, empty when the
+ * document can no longer be opened. The hub (`ReceiveNotification`) sends the same fields in PascalCase.
+ */
+export type ThongBaoDto = {
+  id: string;
+  loai?: string | null;
+  tieuDe?: string | null;
+  noiDung?: string | null;
+  refId?: string | null;
+  refUrl?: string | null;
+  daDoc?: boolean;
+  createdDate?: string | null;
+};

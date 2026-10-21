@@ -11,10 +11,9 @@ import { usePullRefresh } from '@/shared/hooks/usePullRefresh';
 import { Banner } from '@/shared/ui/Banner';
 import { Button } from '@/shared/ui/Button';
 import { HeaderPillButton } from '@/shared/ui/HeaderBar';
-import { HeaderChips } from '@/shared/ui/HeaderChips';
 import { BellIcon, CheckCheckIcon } from '@/shared/ui/icons';
 import { ModuleHeader } from '@/shared/ui/ModuleHeader';
-import { CONTENT_PADDING, ModuleScreen } from '@/shared/ui/ModuleScreen';
+import { CONTENT_PADDING, ModuleScreen, OVERLAP } from '@/shared/ui/ModuleScreen';
 import { useHeaderColors } from '@/shared/ui/ScreenShell';
 import { GroupTitle } from '@/shared/ui/SectionTitle';
 import { ListSkeleton } from '@/shared/ui/Skeleton';
@@ -24,6 +23,7 @@ import { toast } from '@/shared/ui/Toast';
 
 import { NotificationRow } from '../components/NotificationRow';
 import { NotificationsHeaderArt } from '../components/NotificationsHeaderArt';
+import { NotificationTabs } from '../components/NotificationTabs';
 import { useNotificationFeed } from '../hooks/useNotificationFeed';
 import { useNotificationSources } from '../hooks/useNotificationSources';
 import { useUnreadCounts } from '../hooks/useUnreadCount';
@@ -34,9 +34,9 @@ import { dayGroupOf, type FeedCursor, type FeedItem, feedKey, type FeedPage, gro
 const ALL = '*';
 
 /**
- * Notifications (v3, Văn thư style): a picture header (`NotificationsHeaderArt`) with the unread count and one chip per
- * module, "Tất cả" merging every module newest first; rows grouped by day. Tap opens (and reads) one, long-press
- * deletes it.
+ * Notifications (v3, Văn thư style): a picture header (`NotificationsHeaderArt`) with the unread count, and one tab
+ * tile per module floating over its foot (`NotificationTabs`), "Tất cả" merging every module newest first; rows
+ * grouped by day. Tap opens (and reads) one, long-press deletes it.
  */
 export function NotificationsScreen() {
   const { t } = useTranslation();
@@ -50,6 +50,7 @@ export function NotificationsScreen() {
   const { query, items, failed } = useNotificationFeed(shown);
   const pull = usePullRefresh(() => query.refetch());
   const today = todayKey();
+  const tabbed = sources.length > 1;
 
   const sourceOf = (item: FeedItem) => sources.find((source) => source.id === item.sourceId);
   const totalUnread = sources.reduce((sum, source) => sum + (unread[source.id] ?? 0), 0);
@@ -154,7 +155,7 @@ export function NotificationsScreen() {
           <HeaderPillButton testID="notifications-mark-all" icon={CheckCheckIcon} label={t('notifications.markAllRead')} onPress={() => markAll.mutate(markAllTargets)} />
         ) : undefined
       }
-      bottom={18}
+      bottom={tabbed ? 14 + OVERLAP : 18}
     >
       {/* The count on the left, where the picture leaves sky (as on the Bưu phẩm and Văn thư homes). */}
       <View className="flex-row items-center gap-3" accessible accessibilityLabel={`${totalUnread} ${t('notifications.heroUnit')}`}>
@@ -170,24 +171,28 @@ export function NotificationsScreen() {
           </Text>
         </View>
       </View>
-      {sources.length > 1 ? (
-        <View className="mt-4">
-          <HeaderChips
-            testID="notifications-filter"
-            options={[
-              { value: ALL, label: t('notifications.all'), count: totalUnread || undefined, testID: 'notifications-chip-all' },
-              ...sources.map((source) => ({ value: source.id, label: source.label(t), count: unread[source.id] || undefined, testID: `notifications-chip-${source.id}` })),
-            ]}
-            value={selected ? selected.id : ALL}
-            onChange={setFilter}
-          />
-        </View>
-      ) : null}
     </ModuleHeader>
   );
 
   return (
-    <ModuleScreen header={header} scroll={false}>
+    <ModuleScreen header={header} scroll={false} overlap={tabbed}>
+      {tabbed ? (
+        <NotificationTabs
+          tabs={[
+            { value: ALL, label: t('notifications.all'), icon: BellIcon, accent: 'all', unread: totalUnread, testID: 'notifications-chip-all' },
+            ...sources.map((source) => ({
+              value: source.id,
+              label: source.label(t),
+              icon: source.icon,
+              accent: source.accent,
+              unread: unread[source.id] ?? 0,
+              testID: `notifications-chip-${source.id}`,
+            })),
+          ]}
+          value={selected ? selected.id : ALL}
+          onChange={setFilter}
+        />
+      ) : null}
       {query.isLoading ? (
         <View className="p-4">
           <ListSkeleton count={5} lines={3} />

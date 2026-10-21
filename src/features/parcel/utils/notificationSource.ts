@@ -53,6 +53,8 @@ export const parcelNotificationSource: NotificationSource = {
   }),
   label: (t) => t('notifications.tabParcel'),
   name: (t) => t('services.parcel'),
+  icon: PackageIcon,
+  accent: 'parcel',
   appearance: parcelLook,
   refreshKeys: [qk.parcels.root],
 };
