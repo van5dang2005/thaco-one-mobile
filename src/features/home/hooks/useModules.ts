@@ -61,6 +61,16 @@ export function useOpenModule() {
       else await Linking.openURL(module.externalUrl!);
     } catch {
       const store = module.storeUrl;
+      // iOS: straight to the App Store page, no prompt; the alert only if even that fails.
+      if (Platform.OS === 'ios' && store?.ios) {
+        try {
+          await Linking.openURL(store.ios);
+          return;
+        } catch {
+          Alert.alert(label(module), t('home.externalFailed', { name: label(module) }), [{ text: t('common.ok') }]);
+          return;
+        }
+      }
       Alert.alert(
         label(module),
         store ? t('home.externalMissing', { name: label(module) }) : t('home.externalFailed', { name: label(module) }),

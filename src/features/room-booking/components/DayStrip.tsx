@@ -64,7 +64,8 @@ export function DayStrip({ value, onChange, start, days = 7, maxKey, marked, tod
             >
               <View
                 className="flex-1 overflow-hidden rounded-[10px]"
-                style={[{ backgroundColor: selected ? colors['header-name'] : onBlue(0.07) }, ringed ? { borderWidth: 1.5, borderColor: onBlue(0.85) } : null]}
+                // Android blanks a rounded overflow-hidden view whose border is dropped (today ringed → selected): the border goes to 0, never away.
+                style={{ backgroundColor: selected ? colors['header-name'] : onBlue(0.07), borderWidth: ringed ? 1.5 : 0, borderColor: ringed ? onBlue(0.85) : 'transparent' }}
               >
                 <View className="h-[17px] items-center justify-center" style={{ backgroundColor: selected ? colors.danger : onBlue(0.14) }}>
                   <Text
@@ -108,7 +109,7 @@ export function DayStrip({ value, onChange, start, days = 7, maxKey, marked, tod
             style={[
               // Today keeps full strength even on a weekend, so its ring reads.
               { backgroundColor: selected ? colors['header-name'] : 'transparent', opacity: disabled ? 0.3 : !selected && !ringed && weekend ? 0.45 : 1 },
-              ringed ? { borderWidth: 1.5, borderColor: onBlue(0.85) } : null,
+              { borderWidth: ringed ? 1.5 : 0, borderColor: ringed ? onBlue(0.85) : 'transparent' },
             ]}
           >
             <Text weight={selected ? 'bold' : 'medium'} numberOfLines={1} maxFontSizeMultiplier={1.2} style={{ fontSize: 11, lineHeight: 14, color: selected ? colors.header : onBlue(0.75) }}>
