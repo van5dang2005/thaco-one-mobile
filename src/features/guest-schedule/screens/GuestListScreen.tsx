@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type NativeScrollEvent, RefreshControl, ScrollView, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { flattenPages } from '@/core/api/types';
@@ -25,16 +25,12 @@ import { useGuestSchedules } from '../hooks/useGuestSchedules';
 import type { GuestVisitTab } from '../types';
 import { byStart } from '../utils/dashboard';
 
-const TABS: GuestVisitTab[] = ['all', 'pending', 'confirmed', 'checkedIn', 'checkedOut'];
-/** How close to the end of the list (pt) the next page starts loading. */
-const LOAD_AHEAD = 400;
-
-const nearEnd = ({ layoutMeasurement, contentOffset, contentSize }: NativeScrollEvent) =>
-  layoutMeasurement.height + contentOffset.y >= contentSize.height - LOAD_AHEAD;
+const TABS: GuestVisitTab[] = ['all', 'pending', 'checkedIn', 'checkedOut'];
 
 /**
  * "Xem tất cả" of the dashboard: the title on the picture of the plant's gate, cut just under the coach driving in, then
- * on a square-topped grey panel a search field, the status tabs and the day's visits in time order, page by page.
+ * on a square-topped grey panel a search field, the status tabs and the day's visits in time order, in a FlatList that
+ * loads the next page as it nears the end.
  */
 export function GuestListScreen() {
   const { t } = useTranslation();
@@ -55,79 +51,94 @@ export function GuestListScreen() {
   const visits = flattenPages(query.data?.pages).sort(byStart);
   // The summary has no figure for inside and gone apart, so those two show the tab's own total once it is open.
   const count = (f: GuestVisitTab) =>
-    f === 'all' ? counts?.total : f === 'pending' ? counts?.pending : f === 'confirmed' ? counts?.confirmed : f === tab && !keyword ? query.data?.pages[0]?.totalCount : undefined;
+    f === 'all' ? counts?.total : f === 'pending' ? counts?.pending : f === tab && !keyword ? query.data?.pages[0]?.totalCount : undefined;
   const label = (f: GuestVisitTab) => {
     const name = f === 'all' ? t('guestSchedule.list.all') : t(`guestSchedule.dashboard.status.${f}`);
     const n = count(f);
     return n === undefined ? name : t('guestSchedule.list.filterCount', { label: name, count: n });
   };
 
+  const panel = { backgroundColor: guestPageColors[scheme] };
+  const loadMore = () => {
+    if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+  };
+
   return (
     <GuestPage testID="guests-list">
-      <ScrollView
+      <FlatList
+        testID="guests-list-items"
+        data={query.isLoading || (query.isError && !visits.length) ? [] : visits}
+        keyExtractor={(visit) => visit.id}
         contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 8 }}
         keyboardShouldPersistTaps="handled"
-        scrollEventThrottle={200}
-        onScroll={({ nativeEvent }) => {
-          if (nearEnd(nativeEvent) && query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
-        }}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />}
-      >
-        {/* The picture, edge to edge, with the toolbar on it; the panel below covers the rest of the drawing. */}
-        <View className="px-4" style={{ minHeight: scene.gate }}>
-          <GuestScene />
-          <GuestTopBar
-            testID="guests-list-top"
-            fallback="/guests"
-            title={t('guestSchedule.list.title')}
-            subtitle={t('guestSchedule.dashboard.date', { weekday: t(`time.weekday.${String(weekdayOf(today)) as '0'}`), date: formatKey(today) })}
-          />
-        </View>
+        ListHeaderComponent={
+          <>
+            {/* The picture, edge to edge, with the toolbar on it; the panel below covers the rest of the drawing. */}
+            <View className="px-4" style={{ minHeight: scene.gate }}>
+              <GuestScene />
+              <GuestTopBar
+                testID="guests-list-top"
+                fallback="/guests"
+                title={t('guestSchedule.list.title')}
+                subtitle={t('guestSchedule.dashboard.date', { weekday: t(`time.weekday.${String(weekdayOf(today)) as '0'}`), date: formatKey(today) })}
+              />
+            </View>
 
-        <View
-          testID="guests-list-panel"
-          className="flex-grow"
-          style={{ backgroundColor: guestPageColors[scheme], paddingBottom: Math.max(insets.bottom, 12) + 16 }}
-        >
-          <View className="px-4 pt-4">
-            <TextField
-              testID="guests-list-search"
-              leftIcon={SearchIcon}
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t('guestSchedule.list.searchPlaceholder')}
-              returnKeyType="search"
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-            />
+            <View testID="guests-list-panel" className="pb-4" style={panel}>
+              <View className="px-4 pt-4">
+                <TextField
+                  testID="guests-list-search"
+                  leftIcon={SearchIcon}
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder={t('guestSchedule.list.searchPlaceholder')}
+                  returnKeyType="search"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  clearButtonMode="while-editing"
+                />
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 flex-grow-0" contentContainerClassName="gap-2 px-4">
+                {TABS.map((f) => (
+                  <FilterChip key={f} testID={`guests-list-filter-${f}`} size="sm" selected={tab === f} label={label(f)} onPress={() => setTab(f)} />
+                ))}
+              </ScrollView>
+            </View>
+          </>
+        }
+        renderItem={({ item }) => (
+          <View className="px-4 pb-2.5" style={panel}>
+            <VisitCard visit={item} />
           </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 flex-grow-0" contentContainerClassName="gap-2 px-4">
-            {TABS.map((f) => (
-              <FilterChip key={f} testID={`guests-list-filter-${f}`} selected={tab === f} label={label(f)} onPress={() => setTab(f)} />
-            ))}
-          </ScrollView>
-
-          <View className="mt-4 gap-2.5 px-4">
+        )}
+        ListEmptyComponent={
+          <View className="gap-2.5 px-4" style={panel}>
             {query.isLoading ? (
               <>
                 <CardSkeleton lines={3} />
                 <CardSkeleton lines={3} />
               </>
-            ) : query.isError && !visits.length ? (
+            ) : query.isError ? (
               <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-            ) : visits.length ? (
-              visits.map((visit) => <VisitCard key={visit.id} visit={visit} />)
             ) : keyword ? (
               <EmptyState testID="guests-list-empty" icon={SearchIcon} message={t('guestSchedule.list.searchEmpty')} />
             ) : (
               <EmptyState testID="guests-list-empty" icon={UsersIcon} message={tab === 'all' ? t('guestSchedule.dashboard.todayEmpty') : t('guestSchedule.list.empty')} />
             )}
+          </View>
+        }
+        // Grey down to the screen's end under a short list, so the drawing never shows below the visits.
+        ListFooterComponentStyle={[{ flexGrow: 1 }, panel]}
+        ListFooterComponent={
+          <View style={{ paddingBottom: Math.max(insets.bottom, 12) + 6 }}>
             {query.isFetchingNextPage ? <Text className="py-2 text-center text-meta text-muted">{t('common.loadMore')}</Text> : null}
           </View>
-        </View>
-      </ScrollView>
+        }
+      />
     </GuestPage>
   );
 }

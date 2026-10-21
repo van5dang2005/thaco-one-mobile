@@ -11,12 +11,14 @@ type FilterChipProps = {
   selected?: boolean;
   /** Shows a ▾ to signal that tapping opens a picker. */
   dropdown?: boolean;
+  /** `sm`: a lower, tighter chip with smaller text (a row of status tabs). */
+  size?: 'md' | 'sm';
   onPress?: () => void;
   testID?: string;
 };
 
 /** Filter chip inside a sheet: selected = ink fill, otherwise an outline on the card color. */
-export function FilterChip({ label, selected, dropdown, onPress, testID }: FilterChipProps) {
+export function FilterChip({ label, selected, dropdown, size = 'md', onPress, testID }: FilterChipProps) {
   return (
     <Pressable
       testID={testID}
@@ -25,11 +27,12 @@ export function FilterChip({ label, selected, dropdown, onPress, testID }: Filte
       onPress={onPress}
       hitSlop={{ top: 5, bottom: 5 }}
       className={cn(
-        'h-[34px] flex-row items-center gap-1.5 rounded-chip px-3.5 active:opacity-80',
+        'flex-row items-center gap-1.5 rounded-chip active:opacity-80',
+        size === 'sm' ? 'h-[30px] px-3' : 'h-[34px] px-3.5',
         selected ? 'bg-inverse' : 'border border-input-border bg-elevated',
       )}
     >
-      <Text weight={selected ? 'semibold' : 'medium'} numberOfLines={1} className={cn('text-sub', selected ? 'text-on-inverse' : 'text-ink-2')}>
+      <Text weight={selected ? 'semibold' : 'medium'} numberOfLines={1} className={cn(size === 'sm' ? 'text-meta' : 'text-sub', selected ? 'text-on-inverse' : 'text-ink-2')}>
         {label}
       </Text>
       {dropdown ? <Icon icon={ChevronDownIcon} size={14} weight="bold" color={selected ? 'on-inverse' : 'muted'} /> : null}
