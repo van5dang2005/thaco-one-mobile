@@ -4,7 +4,12 @@ function trimSlash(url: string) {
 }
 
 /** A phone app Home opens: its link per platform (empty: none) and its store pages. */
-export type PhoneApp = { url: { ios: string; android: string }; storeUrl: { ios: string; android: string } };
+export type PhoneApp = {
+  url: { ios: string; android: string };
+  storeUrl: { ios: string; android: string };
+  /** Android opens the app by this package (its launcher activity) instead of `url.android`, which neither app registers. */
+  androidPackage?: string;
+};
 
 /**
  * Runtime configuration. EXPO_PUBLIC_* values are inlined at build time, so they must be read with
@@ -32,9 +37,10 @@ export const env = {
     ESIGN_WEB: {
       url: {
         ios: process.env.EXPO_PUBLIC_ESIGN_IOS_URL ?? 'com.thaco.esign://',
-        // THACO ESIGN registers no link on Android: the Play Store page shows "Mở" when it is installed.
         android: process.env.EXPO_PUBLIC_ESIGN_ANDROID_URL ?? 'com.thaco.esign://',
       },
+      // THACO ESIGN registers no link on Android (only `exp+thaco-esign` in dev builds).
+      androidPackage: 'com.thaco.esign',
       storeUrl: {
         ios: process.env.EXPO_PUBLIC_ESIGN_IOS_STORE_URL ?? 'https://apps.apple.com/vn/app/thaco-esign/id6759150412',
         android: process.env.EXPO_PUBLIC_ESIGN_ANDROID_STORE_URL ?? 'https://play.google.com/store/apps/details?id=com.thaco.esign',
@@ -46,6 +52,8 @@ export const env = {
         ios: process.env.EXPO_PUBLIC_PAYTIME_IOS_URL ?? 'vn.com.thaco.paytime://',
         android: process.env.EXPO_PUBLIC_PAYTIME_ANDROID_URL ?? 'vn.com.thaco.paytime://',
       },
+      // Flutter app with only MAIN/LAUNCHER filters: no link on either platform.
+      androidPackage: 'vn.com.thaco.paytime',
       storeUrl: {
         ios: process.env.EXPO_PUBLIC_PAYTIME_IOS_STORE_URL ?? 'https://apps.apple.com/vn/app/thaco-paytime/id6762419210',
         android: process.env.EXPO_PUBLIC_PAYTIME_ANDROID_STORE_URL ?? 'https://play.google.com/store/apps/details?id=vn.com.thaco.paytime',

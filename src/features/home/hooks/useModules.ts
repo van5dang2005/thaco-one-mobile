@@ -1,3 +1,4 @@
+import { openApplication } from 'expo-intent-launcher';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Alert, Linking, Platform } from 'react-native';
@@ -55,7 +56,9 @@ export function useOpenModule() {
 
   const openExternal = async (module: HomeModule) => {
     try {
-      await Linking.openURL(module.externalUrl!);
+      // Throws when the package is not installed (or not visible: app.config `queries`).
+      if (Platform.OS === 'android' && module.androidPackage) openApplication(module.androidPackage);
+      else await Linking.openURL(module.externalUrl!);
     } catch {
       const store = module.storeUrl;
       Alert.alert(

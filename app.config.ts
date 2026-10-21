@@ -96,6 +96,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ['expo-camera', { cameraPermission, microphonePermission: false, recordAudioAndroid: false }],
     ['expo-local-authentication', { faceIDPermission: faceIdPermission }],
     'expo-notifications',
+    // Home tiles open these by package on Android (`env.phoneApps.*.androidPackage`): neither registers a link there.
+    ['./plugins/withAndroidPackageQueries', ['com.thaco.esign', 'vn.com.thaco.paytime']],
   ],
   experiments: {
     typedRoutes: true,

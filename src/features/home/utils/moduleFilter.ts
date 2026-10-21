@@ -42,15 +42,21 @@ export function shortAppName(name: string) {
 type Os = 'ios' | 'android';
 
 /**
- * Where the tile of the phone app `env.phoneApps` names for portal `code` goes on `os`: its link, with the store page
- * to offer when the link fails; or the store page itself when the app has no link there. `null`: not a phone app.
+ * Where the tile of the phone app `env.phoneApps` names for portal `code` goes on `os`: its link (on Android, its
+ * package), with the store page to offer when that fails; or the store page itself when the app has neither there.
+ * `null`: not a phone app.
  */
-export function phoneAppLink(code: string, os: Os, apps: Record<string, PhoneApp> = env.phoneApps): Pick<HomeModule, 'externalUrl' | 'storeUrl'> | null {
+export function phoneAppLink(
+  code: string,
+  os: Os,
+  apps: Record<string, PhoneApp> = env.phoneApps,
+): Pick<HomeModule, 'externalUrl' | 'storeUrl' | 'androidPackage'> | null {
   const app = apps[code];
   const url = app?.url[os].trim();
   const store = app?.storeUrl[os].trim();
-  if (url) return { externalUrl: url, storeUrl: store ? app.storeUrl : undefined };
-  return store ? { externalUrl: store } : null;
+  const androidPackage = os === 'android' ? app?.androidPackage : undefined;
+  if (!url && !androidPackage) return store ? { externalUrl: store } : null;
+  return { externalUrl: url || store, storeUrl: store ? app.storeUrl : undefined, androidPackage };
 }
 
 /**
