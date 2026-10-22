@@ -15,7 +15,7 @@ export type DocRole = 'chu_tri' | 'phoi_hop' | 'de_biet';
  */
 export type IncomingStatus = 'cho_phan_phoi' | 'dang_xu_ly' | 'bi_tra_lai' | 'khong_xu_ly' | 'da_xu_ly';
 
-export type FileKind = 'pdf' | 'doc' | 'xls' | 'other';
+export type FileKind = 'pdf' | 'doc' | 'xls' | 'ppt' | 'other';
 
 export type DocFile = {
   id: string;

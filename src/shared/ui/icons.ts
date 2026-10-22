@@ -54,6 +54,7 @@ export { default as DoorClosedIcon } from 'lucide-react-native/icons/door-closed
 export { default as DoorOpenIcon } from 'lucide-react-native/icons/door-open';
 export { default as DownloadIcon } from 'lucide-react-native/icons/download';
 export { default as EllipsisIcon } from 'lucide-react-native/icons/ellipsis';
+export { default as ExternalLinkIcon } from 'lucide-react-native/icons/external-link';
 export { default as EyeIcon } from 'lucide-react-native/icons/eye';
 export { default as EyeOffIcon } from 'lucide-react-native/icons/eye-off';
 export { default as FileCheckIcon } from 'lucide-react-native/icons/file-check';

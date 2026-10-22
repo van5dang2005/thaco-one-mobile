@@ -79,6 +79,7 @@ function fileKind(name: string, ext?: string | null): FileKind {
   if (found === 'pdf') return 'pdf';
   if (found === 'doc' || found === 'docx') return 'doc';
   if (found === 'xls' || found === 'xlsx') return 'xls';
+  if (found === 'ppt' || found === 'pptx') return 'ppt';
   return 'other';
 }
 

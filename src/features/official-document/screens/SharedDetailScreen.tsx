@@ -24,6 +24,7 @@ import { FileRow } from '../components/FileRow';
 import { PermissionChips } from '../components/PermissionChips';
 import { ShareSheet } from '../components/ShareSheet';
 import { useDocumentMe } from '../hooks/useDocumentMe';
+import { useDownloadDocFile } from '../hooks/useDownloadDocFile';
 import { useOpenDocFile } from '../hooks/useOpenDocFile';
 import { useSharedActions } from '../hooks/useSharedActions';
 import { useSharedDoc } from '../hooks/useSharedDoc';
@@ -36,10 +37,11 @@ export function SharedDetailScreen() {
   const query = useSharedDoc(id);
   const me = useDocumentMe();
   const { markRead } = useSharedActions();
-  const open = useOpenDocFile();
+  const doc = query.data;
+  const open = useOpenDocFile({ canDownload: !!doc?.quyen.tai });
+  const save = useDownloadDocFile();
   const pull = usePullRefresh(() => query.refetch());
   const [sharing, setSharing] = useState(false);
-  const doc = query.data;
 
   const unread = doc && !doc.daXem;
   useEffect(() => {
@@ -75,7 +77,8 @@ export function SharedDetailScreen() {
       icon={DownloadIcon}
       label={t('documents.sharedDetail.download')}
       disabled={!doc.quyen.tai || !doc.vanBan}
-      onPress={() => doc.vanBan && open(doc.vanBan)}
+      loading={save.pending}
+      onPress={() => doc.vanBan && void save.download(doc.vanBan)}
     />,
     <Button key="share" testID="shared-share" className="flex-1" icon={Share2Icon} label={t('documents.sharedDetail.shareOn')} disabled={!canShare} onPress={() => setSharing(true)} />,
   ];

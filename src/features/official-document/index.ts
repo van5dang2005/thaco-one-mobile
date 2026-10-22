@@ -1,4 +1,5 @@
 export { AssignProcessingScreen } from './screens/AssignProcessingScreen';
+export { DocumentFileScreen } from './screens/DocumentFileScreen';
 export { DocumentsHomeScreen } from './screens/DocumentsHomeScreen';
 export { IncomingDetailScreen } from './screens/IncomingDetailScreen';
 export { IncomingListScreen } from './screens/IncomingListScreen';

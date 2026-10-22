@@ -158,3 +158,14 @@ describe('sharing', () => {
     expect(shareOptions({}).ceiling).toEqual({ xem: true, tai: true, chiaSe: true });
   });
 });
+
+describe('file kinds', () => {
+  it('labels PowerPoint files PPT, by name or by the extension field', () => {
+    const [byName, byExt] = splitFiles([
+      { id: 'p', tenTep: 'Báo cáo quý 3.pptx', loaiTepTin: 'Tệp đính kèm', isXem: true },
+      { id: 'q', tenTep: 'Trình chiếu', loaiTep: '.PPT', loaiTepTin: 'Tệp đính kèm', isXem: true },
+    ]).tep;
+    expect(byName.kind).toBe('ppt');
+    expect(byExt.kind).toBe('ppt');
+  });
+});
