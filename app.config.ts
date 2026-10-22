@@ -51,8 +51,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: 'com.thaco.one',
-    // Firebase (Crashlytics). Git-ignored: both files come from GOOGLE_SERVICES_*_BASE64 (expo.dev / .env).
-    googleServicesFile: './GoogleService-Info.plist',
+    // Firebase (Crashlytics). Both files are git-ignored. On EAS Build they come from the production File variables
+    // GOOGLE_SERVICES_*_BASE64 (expo.dev; despite the name each holds the uploaded file's path), locally from the root.
+    googleServicesFile: process.env.GOOGLE_SERVICES_PLIST_BASE64 ?? './GoogleService-Info.plist',
     supportsTablet: false,
     infoPlist: {
       NSCameraUsageDescription: cameraPermission,
@@ -65,7 +66,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: 'com.thaco.one',
-    googleServicesFile: './google-services.json',
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON_BASE64 ?? './google-services.json',
     adaptiveIcon: {
       backgroundColor: '#00539B',
       foregroundImage: './assets/images/android-icon-foreground.png',
