@@ -51,6 +51,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: 'com.thaco.one',
+    // Firebase (Crashlytics). Git-ignored: both files come from GOOGLE_SERVICES_*_BASE64 (expo.dev / .env).
+    googleServicesFile: './GoogleService-Info.plist',
     supportsTablet: false,
     infoPlist: {
       NSCameraUsageDescription: cameraPermission,
@@ -63,6 +65,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: 'com.thaco.one',
+    googleServicesFile: './google-services.json',
     adaptiveIcon: {
       backgroundColor: '#00539B',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -98,6 +101,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-notifications',
     // Home tiles open these by package on Android (`env.phoneApps.*.androidPackage`): neither registers a link there.
     ['./plugins/withAndroidPackageQueries', ['com.thaco.esign', 'vn.com.thaco.paytime']],
+    // Crash reports (Firebase Crashlytics). iOS installs Firebase with CocoaPods as static frameworks: RNFB's default
+    // (Swift Package Manager) needs dynamic frameworks for every pod. Expo's prebuilt React Native core then needs
+    // each RNFB pod linked statically.
+    ['@react-native-firebase/app', { ios: { disableSPM: true } }],
+    '@react-native-firebase/crashlytics',
+    ['expo-build-properties', { ios: { useFrameworks: 'static', forceStaticLinking: ['RNFBApp', 'RNFBCrashlytics'] } }],
+    // Only production builds send crash reports; development and preview builds collect nothing.
+    ['./plugins/withCrashlyticsCollection', appEnv === 'production'],
   ],
   experiments: {
     typedRoutes: true,

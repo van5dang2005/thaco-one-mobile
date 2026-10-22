@@ -13,6 +13,7 @@ import { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { startCrashReporting, useCrashBreadcrumbs } from '@/core/monitoring/crashReporting';
 import { queryClient, queryPersister } from '@/core/query/queryClient';
 import { restoreSession } from '@/core/session/session';
 import { useSessionStore } from '@/core/session/sessionStore';
@@ -21,6 +22,7 @@ import { ThemeProvider, useTheme } from '@/core/theme/ThemeProvider';
 import { UpdatePrompt } from '@/features/app-update/components/UpdatePrompt';
 import { ToastHost } from '@/shared/ui/Toast';
 
+startCrashReporting();
 void SplashScreen.preventAutoHideAsync();
 
 const persistOptions = {
@@ -39,6 +41,7 @@ function RootNavigator() {
   const { scheme, colors } = useTheme();
   const status = useSessionStore((s) => s.status);
   const signedIn = status === 'signedIn';
+  useCrashBreadcrumbs();
 
   const navigationTheme = useMemo(() => {
     const base = scheme === 'dark' ? DarkTheme : DefaultTheme;

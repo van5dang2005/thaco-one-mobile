@@ -32,6 +32,7 @@ Cấu hình app nằm ở `app.config.ts`. Biến môi trường được quản
 | `EXPO_PUBLIC_PAYTIME_IOS_URL`, `EXPO_PUBLIC_PAYTIME_ANDROID_URL`, `EXPO_PUBLIC_PAYTIME_IOS_STORE_URL`, `EXPO_PUBLIC_PAYTIME_ANDROID_STORE_URL` | Ô "Chấm công PAYTIME" (portal `PAYTIME`) mở app THACO Paytime (`vn.com.thaco.paytime://`, theo bundle id như E-Sign), tương tự |
 | `EXPO_PUBLIC_SSO_ISSUER`, `EXPO_PUBLIC_SSO_CLIENT_ID`, `EXPO_PUBLIC_SSO_SCOPES` | THACO SSO (Keycloak). Form đăng nhập luôn gửi tài khoản tới realm này (không mở trình duyệt), nên `CLIENT_ID` bắt buộc: client public, bật *Direct access grants*. Mặc định issuer `https://sso.thaco.com.vn/realms/thacogroup`, scope `openid profile email` |
 | `EXPO_PUBLIC_IT_SUPPORT_PHONE` | Số hotline IT ở màn đăng nhập (tùy chọn) |
+| `GOOGLE_SERVICES_JSON_BASE64`, `GOOGLE_SERVICES_PLIST_BASE64` | Base64 của `google-services.json` / `GoogleService-Info.plist` (Firebase, dùng cho Crashlytics), tạo bằng `base64 -i <file>`. Git bỏ qua hai file gốc. Cần có ở **cả ba** môi trường trên expo.dev, vì bản build nào cũng chứa Firebase |
 
 `EXPO_PUBLIC_*` được nhúng thẳng vào app nên không để bí mật trong đó. Khi tạo biến trên expo.dev, chọn visibility **Plain text** hoặc **Sensitive**: build local không đọc được biến **Secret**.
 
@@ -72,6 +73,15 @@ npm run update:production -- --message "Sửa lỗi hiển thị bưu phẩm"
 - Bản update đọc biến môi trường của EAS (`--environment`), không đọc `.env` local.
 - Đánh số bản vá: trước mỗi lần `update:production`, tăng `EXPO_PUBLIC_PATCH_VERSION` của môi trường production trên expo.dev (`eas env:update`). Màn hình Hồ sơ hiện "v1.0.0 (patch 3)". Khi build bản mới (tăng `EXPO_PUBLIC_APP_VERSION`), đặt lại về trống hoặc `0`.
 - Lỗi sau khi phát hành: `eas update:rollback` (hoặc publish lại commit trước).
+
+### Ghi log crash (Firebase Crashlytics)
+
+Chỉ bản build **production** gửi báo cáo crash, gồm crash native và lỗi JS gây sập app (kèm stack JS), lên Firebase Console, project `thaco-one-mobile`, mục Crashlytics. Bản development và preview không gửi gì.
+
+- Bật hay tắt được quyết định **lúc build** theo `APP_ENV` (`plugins/withCrashlyticsCollection.js`), nên crash native được ghi ngay từ lần mở app đầu tiên.
+- Mỗi báo cáo kèm: user id (tên đăng nhập), `version` (kèm số patch), `updateId` của bản OTA đang chạy, và các màn hình đã đi qua trước khi crash (`src/core/monitoring/crashReporting.ts`). Promise bị reject mà không ai bắt được ghi thành lỗi non-fatal.
+- iOS cài Firebase bằng CocoaPods với static frameworks (`disableSPM` cùng `forceStaticLinking` trong `app.config.ts`). Đây là nhánh cuối của RN Firebase còn hỗ trợ cách này (v26). Lên v27 thì phải chuyển sang Swift Package Manager với dynamic frameworks.
+- Muốn thử: đặt `APP_ENV=production` trong `.env`, build release (`npx expo run:ios --configuration Release` / `npx expo run:android --variant release`), cho app crash rồi mở lại thì báo cáo mới được gửi lên (Firebase cần vài phút để hiển thị). Bản debug không bao giờ gửi.
 
 ### iOS
 
