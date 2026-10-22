@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import type { ColorToken } from '@/core/theme/palette';
 import { useTheme } from '@/core/theme/ThemeProvider';
 import { formatDayMonth, formatTime, isSameVnDay } from '@/core/time/vn';
-import { Card } from '@/shared/ui/Card';
+import { Card, PressableCard } from '@/shared/ui/Card';
 import { Icon } from '@/shared/ui/Icon';
 import { BuildingIcon, UsersIcon } from '@/shared/ui/icons';
 import type { BadgeKind } from '@/shared/ui/status';
@@ -20,16 +20,16 @@ const edgeColors: Record<GuestVisitStatus, ColorToken> = { pending: 'warning', c
 
 /**
  * One visit: the status edge, start over end (times, or days for a visit over several days), a hairline, then the
- * group, the receiving units, the head count with the guest type, and the status.
+ * group, the receiving units, the head count with the guest type, and the status. Pressable with `onPress`.
  */
-export function VisitCard({ visit }: { visit: GuestScheduleItem }) {
+export function VisitCard({ visit, onPress }: { visit: GuestScheduleItem; onPress?: () => void }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const start = visitStart(visit);
   const end = visitEnd(visit);
   const format = isSameVnDay(start, end) ? formatTime : formatDayMonth;
-  return (
-    <Card testID={`guests-visit-${visit.id}`} className="flex-row">
+  const content = (
+    <>
       <View className="w-[3px]" style={{ backgroundColor: colors[edgeColors[visit.status]] }} />
       <View className="w-[67px] items-center justify-center border-r border-line-2 py-3.5">
         <Text weight="bold" numeric className="text-ink" style={{ fontSize: 15, lineHeight: 20 }}>
@@ -59,6 +59,15 @@ export function VisitCard({ visit }: { visit: GuestScheduleItem }) {
           <StatusBadge kind={visitStatusKinds[visit.status]} label={t(`guestSchedule.dashboard.status.${visit.status}`)} />
         </View>
       </View>
+    </>
+  );
+  return onPress ? (
+    <PressableCard testID={`guests-visit-${visit.id}`} className="flex-row" onPress={onPress}>
+      {content}
+    </PressableCard>
+  ) : (
+    <Card testID={`guests-visit-${visit.id}`} className="flex-row">
+      {content}
     </Card>
   );
 }

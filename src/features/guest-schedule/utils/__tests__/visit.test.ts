@@ -1,7 +1,8 @@
 import type { GuestScheduleDto } from '../../types';
-import { qrCodeOf, toVisit, visitPhase } from '../visit';
+import { qrLinkOf, toVisit, visitPhase } from '../visit';
 
 const CODE = '0807954103354f829a1375e0e0cb138e';
+const LINK = `https://uatapi01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}`;
 
 /** Shaped like the UAT response of `GET /api/GuestSchedules/mobile/qr/{code}`. */
 const dto: GuestScheduleDto = {
@@ -22,20 +23,32 @@ const dto: GuestScheduleDto = {
   ],
 };
 
-describe('qrCodeOf', () => {
-  it('takes the code itself, or the segment after /qr/ of a link', () => {
-    expect(qrCodeOf(`  ${CODE}\n`)).toBe(CODE);
-    expect(qrCodeOf(`https://uatapi01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}`)).toBe(CODE);
-    expect(qrCodeOf(`https://uatapi01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}/check-in?x=1`)).toBe(CODE);
-    expect(qrCodeOf('   ')).toBe('');
+describe('qrLinkOf', () => {
+  it('calls the link of a THACO guest QR as it is, over HTTPS, up to the code', () => {
+    expect(qrLinkOf(`  ${LINK}\n`)).toBe(LINK);
+    expect(qrLinkOf(`http://uatapi01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}`)).toBe(LINK);
+    expect(qrLinkOf(`${LINK}/check-in?x=1`)).toBe(LINK);
+    expect(qrLinkOf(`https://api01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}`)).toBe(`https://api01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}`);
+  });
+
+  it('sends a bare code to the guest back-end', () => {
+    expect(qrLinkOf(` ${CODE} `)).toBe(`/api/GuestSchedules/mobile/qr/${CODE}`);
+    expect(qrLinkOf('a b/c')).toBe('/api/GuestSchedules/mobile/qr/a%20b%2Fc');
+  });
+
+  it('calls nothing for an empty code or a link that is no THACO guest QR', () => {
+    expect(qrLinkOf('   ')).toBe('');
+    expect(qrLinkOf(`https://example.com/api/GuestSchedules/mobile/qr/${CODE}`)).toBe('');
+    expect(qrLinkOf(`https://thaco.com.vn.example.com/api/GuestSchedules/mobile/qr/${CODE}`)).toBe('');
+    expect(qrLinkOf('https://uatapi01.thaco.com.vn/api/other')).toBe('');
   });
 });
 
 describe('toVisit', () => {
   it('maps the schedule, the receiving units as the place', () => {
-    expect(toVisit(dto, CODE)).toEqual({
+    expect(toVisit(dto, LINK)).toEqual({
       id: '35a1f640-d91e-4e4b-a62b-0ff16ce246d6',
-      qrCode: CODE,
+      link: LINK,
       code: 'AUTO1020260003',
       groupName: 'Đoàn khách mẫu',
       purpose: 'Đàm phán hợp đồng',
@@ -43,23 +56,24 @@ describe('toVisit', () => {
       fromDate: '2026-10-20T00:00:00Z',
       toDate: '2026-10-23T00:00:00Z',
       location: 'Công ty A, Công ty B',
+      members: ['Khách 1', 'Khách 2'],
     });
   });
 
   it('fills gaps: name from the code, head count from the members, one-day period', () => {
-    const visit = toVisit({ ...dto, guestName: ' ', guestCount: null, endDate: null, workingUnits: [], purpose: '' }, CODE);
+    const visit = toVisit({ ...dto, guestName: ' ', guestCount: null, endDate: null, workingUnits: [], purpose: '' }, LINK);
     expect(visit).toMatchObject({ groupName: 'AUTO1020260003', guestCount: 2, toDate: '2026-10-20T00:00:00Z', location: null, purpose: null });
   });
 
   it('finds no visit in an empty answer', () => {
-    expect(toVisit(null, CODE)).toBeNull();
-    expect(toVisit({ guestScheduleId: '' }, CODE)).toBeNull();
+    expect(toVisit(null, LINK)).toBeNull();
+    expect(toVisit({ guestScheduleId: '' }, LINK)).toBeNull();
   });
 });
 
 describe('visitPhase', () => {
   it('counts the days of the period in Vietnam time', () => {
-    const visit = toVisit(dto, CODE)!;
+    const visit = toVisit(dto, LINK)!;
     expect(visitPhase(visit, new Date('2026-10-16T07:00:00Z'))).toEqual({ kind: 'upcoming', day: -3, days: 4 });
     expect(visitPhase(visit, new Date('2026-10-21T03:00:00Z'))).toEqual({ kind: 'ongoing', day: 2, days: 4 });
     expect(visitPhase(visit, new Date('2026-10-24T03:00:00Z'))).toEqual({ kind: 'ended', day: 5, days: 4 });

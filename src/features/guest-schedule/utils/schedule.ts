@@ -40,6 +40,8 @@ export function toScheduleItem(dto: GuestScheduleListItemDto | null | undefined)
   const units = (dto.workingUnits ?? []).map((unit) => unit.workingUnitName?.trim()).filter(Boolean);
   return {
     id: dto.guestScheduleId,
+    code: dto.guestCode?.trim() || undefined,
+    qrToken: dto.qrToken?.trim() || undefined,
     groupName: dto.guestName?.trim() || dto.guestCode?.trim() || '',
     guestType: dto.guestTypeName?.trim() || null,
     host: units.length ? units.join(', ') : null,

@@ -1329,6 +1329,15 @@ const vi = {
       searchPlaceholder: 'Tìm đoàn khách',
       searchEmpty: 'Không tìm thấy đoàn khách phù hợp',
     },
+    detail: {
+      start: 'Bắt đầu',
+      end: 'Kết thúc',
+      host: 'Đơn vị tiếp đón',
+      purpose: 'Mục đích',
+      members: 'Danh sách khách',
+      membersCount: '{{count}} người',
+      loadFailed: 'Chưa tải được mục đích và danh sách khách.',
+    },
     scan: {
       title: 'Quét mã QR',
       hint: 'Đưa mã QR vào trong khung hình để quét',

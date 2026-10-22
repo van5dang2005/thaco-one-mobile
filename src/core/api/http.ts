@@ -32,7 +32,9 @@ function serialize(value: QueryPrimitive) {
   return value instanceof Date ? value.toISOString() : String(value);
 }
 
+/** `path` may also be a whole link (a guest QR holds one); it then goes as it is, without the base. */
 export function buildUrl(baseUrl: string, path: string, query?: Query) {
+  const base = /^https?:\/\//i.test(path) ? '' : baseUrl;
   const params: string[] = [];
   Object.entries(query ?? {}).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
@@ -40,7 +42,7 @@ export function buildUrl(baseUrl: string, path: string, query?: Query) {
     const values = Array.isArray(value) ? value : [value];
     values.forEach((item) => params.push(`${encodeURIComponent(key)}=${encodeURIComponent(serialize(item))}`));
   });
-  return `${baseUrl}${path}${params.length ? `?${params.join('&')}` : ''}`;
+  return `${base}${path}${params.length ? `?${params.join('&')}` : ''}`;
 }
 
 async function toApiError(service: ApiService, response: Response): Promise<ApiError> {

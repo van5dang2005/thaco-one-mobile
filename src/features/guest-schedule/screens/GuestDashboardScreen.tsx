@@ -22,6 +22,7 @@ import { GuestPage, guestPageColors } from '../components/GuestPage';
 import { GuestScene, useGuestScene } from '../components/GuestScene';
 import { GuestTopBar } from '../components/GuestTopBar';
 import { VisitCard } from '../components/VisitCard';
+import { VisitDetailSheet } from '../components/VisitDetailSheet';
 import { useGuestSchedules } from '../hooks/useGuestSchedules';
 import type { GuestScheduleItem } from '../types';
 import { byStart, visitStage } from '../utils/dashboard';
@@ -47,7 +48,7 @@ function previewOf(visits: GuestScheduleItem[]) {
 /**
  * "Lịch khách": the title and date on the picture of the plant's gate, with a square strip of three counters centred on
  * it, the visits around now on a grey panel with a straight top edge under it ("Xem tất cả" opens the day's list), and
- * "Quét mã QR" floating at the bottom.
+ * "Quét mã QR" floating at the bottom. A visit opens its details in a sheet.
  */
 export function GuestDashboardScreen() {
   const { t } = useTranslation();
@@ -55,6 +56,7 @@ export function GuestDashboardScreen() {
   const scene = useGuestScene();
   /** Height of the pinned counters, measured; starts at their usual height so nothing jumps on the first frame. */
   const [statsHeight, setStatsHeight] = useState(STATS_HEIGHT);
+  const [selected, setSelected] = useState<GuestScheduleItem | null>(null);
   const now = useNow(60_000);
   const today = todayKey(now);
   const { data, isLoading, isError, error, refetch } = useGuestSchedules({ day: today, tab: 'all' });
@@ -130,7 +132,7 @@ export function GuestDashboardScreen() {
           ) : visits.length ? (
             <View className="gap-2.5">
               {previewOf(visits).map((visit) => (
-                <VisitCard key={visit.id} visit={visit} />
+                <VisitCard key={visit.id} visit={visit} onPress={() => setSelected(visit)} />
               ))}
             </View>
           ) : (
@@ -147,6 +149,7 @@ export function GuestDashboardScreen() {
           onPress={() => router.push('/guests/scan')}
         />
       </View>
+      <VisitDetailSheet visit={selected} onClose={() => setSelected(null)} />
     </GuestPage>
   );
 }

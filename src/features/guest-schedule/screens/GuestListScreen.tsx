@@ -21,8 +21,9 @@ import { GuestPage, guestPageColors } from '../components/GuestPage';
 import { GuestScene, useGuestScene } from '../components/GuestScene';
 import { GuestTopBar } from '../components/GuestTopBar';
 import { VisitCard } from '../components/VisitCard';
+import { VisitDetailSheet } from '../components/VisitDetailSheet';
 import { useGuestSchedules } from '../hooks/useGuestSchedules';
-import type { GuestVisitTab } from '../types';
+import type { GuestScheduleItem, GuestVisitTab } from '../types';
 import { byStart } from '../utils/dashboard';
 
 const TABS: GuestVisitTab[] = ['all', 'pending', 'checkedIn', 'checkedOut'];
@@ -30,7 +31,7 @@ const TABS: GuestVisitTab[] = ['all', 'pending', 'checkedIn', 'checkedOut'];
 /**
  * "Xem tất cả" of the dashboard: the title on the picture of the plant's gate, cut just under the coach driving in, then
  * on a square-topped grey panel a search field, the status tabs and the day's visits in time order, in a FlatList that
- * loads the next page as it nears the end.
+ * loads the next page as it nears the end. A visit opens its details in a sheet.
  */
 export function GuestListScreen() {
   const { t } = useTranslation();
@@ -40,6 +41,7 @@ export function GuestListScreen() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<GuestVisitTab>('all');
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<GuestScheduleItem | null>(null);
   const keyword = useDebounced(search.trim(), 350);
   const today = todayKey();
 
@@ -112,7 +114,7 @@ export function GuestListScreen() {
         }
         renderItem={({ item }) => (
           <View className="px-4 pb-2.5" style={panel}>
-            <VisitCard visit={item} />
+            <VisitCard visit={item} onPress={() => setSelected(item)} />
           </View>
         )}
         ListEmptyComponent={
@@ -139,6 +141,7 @@ export function GuestListScreen() {
           </View>
         }
       />
+      <VisitDetailSheet visit={selected} onClose={() => setSelected(null)} />
     </GuestPage>
   );
 }

@@ -60,6 +60,8 @@ describe('toSchedulePage', () => {
     expect(items).toEqual([
       {
         id: 'g-1',
+        code: 'AUTO1020260003',
+        qrToken: '0807954103354f829a1375e0e0cb138e',
         groupName: 'Đoàn khách mẫu',
         guestType: 'Khách hàng',
         host: 'Công ty A, Công ty B',
@@ -68,7 +70,7 @@ describe('toSchedulePage', () => {
         guestCount: 4,
         status: 'checkedIn',
       },
-      { id: 'g-2', groupName: 'AUTO1020260004', guestType: null, host: null, from: '', to: '', guestCount: 0, status: 'checkedOut' },
+      { id: 'g-2', code: 'AUTO1020260004', groupName: 'AUTO1020260004', guestType: null, host: null, from: '', to: '', guestCount: 0, status: 'checkedOut' },
       { id: 'g-3', groupName: 'Đoàn chờ', guestType: null, host: null, from: '', to: '', guestCount: 0, status: 'pending' },
     ]);
   });

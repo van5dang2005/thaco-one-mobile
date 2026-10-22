@@ -1329,6 +1329,15 @@ const en: Translation = {
       searchPlaceholder: 'Search guest groups',
       searchEmpty: 'No matching guest groups',
     },
+    detail: {
+      start: 'Start',
+      end: 'End',
+      host: 'Receiving units',
+      purpose: 'Purpose',
+      members: 'Guests',
+      membersCount: '{{count}} people',
+      loadFailed: 'Could not load the purpose and the guest names.',
+    },
     scan: {
       title: 'Scan QR code',
       hint: 'Fit the QR code inside the frame to scan',

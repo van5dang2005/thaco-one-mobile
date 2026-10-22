@@ -20,8 +20,8 @@ export type GuestScheduleDto = {
 /** A guest visit registration, what a guest QR points to. */
 export type GuestVisit = {
   id: string;
-  /** The code the QR holds; the check-in posts to the same link. */
-  qrCode: string;
+  /** The lookup link (the QR's own, or the guest back-end's for a bare code); the check-in posts to `{link}/check-in`. */
+  link: string;
   /** Registration number, e.g. `AUTO1020260003`. */
   code?: string;
   /** "Khách hàng Malaysia - Đàm phán xe tải". */
@@ -35,6 +35,8 @@ export type GuestVisit = {
   toDate: string;
   /** Where the guests are received: the receiving units, "Công ty TNHH MTV Sản xuất và Lắp ráp xe tải THACO". */
   location?: string | null;
+  /** Names of the registered guests. */
+  members: string[];
 };
 
 /** `securityCheckInStatus` of the list: where the group stands at the gate. */
@@ -86,6 +88,10 @@ export type GuestVisitTab = 'all' | 'confirmed' | GuestVisitStatus;
 /** A visit in the dashboard's "Lịch khách hôm nay" list. */
 export type GuestScheduleItem = {
   id: string;
+  /** Registration number, e.g. `AUTO1020260003`. */
+  code?: string;
+  /** The code the guests' QR holds, to look up the details. */
+  qrToken?: string;
   /** "Đoàn KIA Hàn Quốc". */
   groupName: string;
   /** "Khách hàng", "Đối tác"… */
