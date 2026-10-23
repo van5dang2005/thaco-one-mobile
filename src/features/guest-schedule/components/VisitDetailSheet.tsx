@@ -5,14 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { qk } from '@/core/query/keys';
-import { formatDayMonth, formatTime, isSameVnDay, parseServerDate } from '@/core/time/vn';
+import { formatDayMonth, formatTime, parseServerDate } from '@/core/time/vn';
 import { cn } from '@/shared/lib/cn';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Banner } from '@/shared/ui/Banner';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
 import { Button } from '@/shared/ui/Button';
 import { Icon } from '@/shared/ui/Icon';
-import { type AppIcon, BuildingIcon, CalendarCheckIcon, ClockIcon, LogOutIcon, ShieldCheckIcon, UsersIcon } from '@/shared/ui/icons';
+import { type AppIcon, BuildingIcon, CalendarCheckIcon, CalendarIcon, LogOutIcon, ShieldCheckIcon, UsersIcon } from '@/shared/ui/icons';
 import type { RoundIconTone } from '@/shared/ui/RoundIcon';
 import { SectionTitle } from '@/shared/ui/SectionTitle';
 import { Skeleton } from '@/shared/ui/Skeleton';
@@ -51,7 +51,6 @@ export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem 
   if (!shown) return null;
   const start = visitStart(shown);
   const end = visitEnd(shown);
-  const format = isSameVnDay(start, end) ? formatTime : formatDayMonth;
   const extra = details.data;
   // A wrong or ended QR only means there is nothing more to show; anything else (network, server) can be retried.
   const failed = details.isError && !(details.error instanceof GuestError);
@@ -94,8 +93,8 @@ export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem 
         <StatStrip
           items={[
             { key: 'guests', icon: UsersIcon, tone: 'wait', value: shown.guestCount, label: t('guestSchedule.checkIn.registeredGuests') },
-            { key: 'start', icon: ClockIcon, tone: 'ok', value: format(start), label: t('guestSchedule.detail.start') },
-            { key: 'end', icon: CalendarCheckIcon, tone: 'off', value: format(end), label: t('guestSchedule.detail.end') },
+            { key: 'start', icon: CalendarIcon, tone: 'ok', value: formatDayMonth(start), label: t('guestSchedule.detail.start') },
+            { key: 'end', icon: CalendarCheckIcon, tone: 'off', value: formatDayMonth(end), label: t('guestSchedule.detail.end') },
           ]}
         />
         {shown.host ? <DetailRow icon={BuildingIcon} label={t('guestSchedule.detail.host')} value={shown.host} /> : null}

@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import type { ColorToken } from '@/core/theme/palette';
 import { useTheme } from '@/core/theme/ThemeProvider';
-import { formatDayMonth, formatTime, isSameVnDay } from '@/core/time/vn';
+import { formatDayMonth } from '@/core/time/vn';
 import { Card, PressableCard } from '@/shared/ui/Card';
 import { Icon } from '@/shared/ui/Icon';
 import { BuildingIcon, UsersIcon } from '@/shared/ui/icons';
@@ -19,24 +19,23 @@ export const visitStatusKinds: Record<GuestVisitStatus, BadgeKind> = { pending: 
 const edgeColors: Record<GuestVisitStatus, ColorToken> = { pending: 'warning', checkedIn: 'success', checkedOut: 'subtle', rejected: 'danger' };
 
 /**
- * One visit: the status edge, start over end (times, or days for a visit over several days), a hairline, then the
- * group, the receiving units, the head count with the guest type, and the status. Pressable with `onPress`.
+ * One visit: the status edge, the first day over the last (the API gives days, no times), a hairline, then the group,
+ * the receiving units, the head count with the guest type, and the status. Pressable with `onPress`.
  */
 export function VisitCard({ visit, onPress }: { visit: GuestScheduleItem; onPress?: () => void }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const start = visitStart(visit);
   const end = visitEnd(visit);
-  const format = isSameVnDay(start, end) ? formatTime : formatDayMonth;
   const content = (
     <>
       <View className="w-[3px]" style={{ backgroundColor: colors[edgeColors[visit.status]] }} />
       <View className="w-[67px] items-center justify-center border-r border-line-2 py-3.5">
         <Text weight="bold" numeric className="text-ink" style={{ fontSize: 15, lineHeight: 20 }}>
-          {format(start)}
+          {formatDayMonth(start)}
         </Text>
         <Text numeric className="text-subtle" style={{ fontSize: 12.5, lineHeight: 17 }}>
-          {format(end)}
+          {formatDayMonth(end)}
         </Text>
       </View>
       <View className="min-w-0 flex-1 gap-1 px-3.5 py-3">
