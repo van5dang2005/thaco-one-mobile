@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
+import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './Icon';
 import { type AppIcon, XIcon } from './icons';
@@ -29,6 +30,8 @@ type Props = {
   scrollable?: boolean;
   /** Max height as a fraction of the window. */
   maxHeightRatio?: number;
+  /** A smaller icon heading (36pt icon, 16pt title, 32pt close) for short pickers. */
+  compact?: boolean;
   testID?: string;
 };
 
@@ -38,7 +41,7 @@ const BACKDROP = '#0B1420';
 const BACKDROP_OPACITY = 0.55;
 
 /** Bottom sheet: slides up over a dimmed backdrop, 28pt top radius, 40×5 grab handle. */
-export function BottomSheet({ visible, onClose, title, caption, subtitle, icon, iconTone = 'ok', children, footer, scrollable, maxHeightRatio = 0.9, testID }: Props) {
+export function BottomSheet({ visible, onClose, title, caption, subtitle, icon, iconTone = 'ok', children, footer, scrollable, maxHeightRatio = 0.9, compact, testID }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -76,10 +79,10 @@ export function BottomSheet({ visible, onClose, title, caption, subtitle, icon, 
 
   const heading = icon ? (
     <View className="flex-row items-center gap-3">
-      <RoundIcon icon={icon} size={44} tone={iconTone} square />
+      <RoundIcon icon={icon} size={compact ? 36 : 44} tone={iconTone} square />
       <View className="min-w-0 flex-1 gap-0.5">
         {title ? (
-          <Text weight="bold" numberOfLines={2} accessibilityRole="header" style={{ fontSize: 17, lineHeight: 21 }}>
+          <Text weight="bold" numberOfLines={2} accessibilityRole="header" style={{ fontSize: compact ? 16 : 17, lineHeight: compact ? 20 : 21 }}>
             {title}
           </Text>
         ) : null}
@@ -89,7 +92,7 @@ export function BottomSheet({ visible, onClose, title, caption, subtitle, icon, 
           </Text>
         ) : null}
         {subtitle ? (
-          <Text numberOfLines={2} className="text-muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+          <Text numberOfLines={2} className="text-muted" style={{ fontSize: compact ? 12 : 12.5, lineHeight: compact ? 16 : 17 }}>
             {subtitle}
           </Text>
         ) : null}
@@ -99,7 +102,7 @@ export function BottomSheet({ visible, onClose, title, caption, subtitle, icon, 
         accessibilityLabel={t('common.close')}
         onPress={onClose}
         hitSlop={6}
-        className="h-9 w-9 items-center justify-center rounded-[12px] active:opacity-70"
+        className={cn('items-center justify-center active:opacity-70', compact ? 'h-8 w-8 rounded-[10px]' : 'h-9 w-9 rounded-[12px]')}
         style={{ backgroundColor: colors.field }}
       >
         <Icon icon={XIcon} size={16} weight="bold" color="muted" />

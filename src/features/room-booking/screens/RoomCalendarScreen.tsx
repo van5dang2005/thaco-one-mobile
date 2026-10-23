@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, type StyleProp, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useRoomMe } from '@/core/session/useMe';
@@ -46,8 +46,8 @@ import { weekStartOf } from '../utils/myMeetings';
 /** Durations offered by the quick-book chips, in minutes. */
 const DURATIONS = [30, 60, 90, 120];
 
-/** Backdrop of the week band: the header's own blue (navy at night), deepened, over the picture. */
-const WEEK_BAND = { light: 'rgba(0, 48, 100, 0.62)', dark: 'rgba(5, 11, 22, 0.66)' };
+/** The header's glass, shared by the where-and-when card and the week band under it: white 12% with a 24% hairline. */
+const GLASS = { backgroundColor: onBlue(0.12), borderWidth: 1, borderColor: onBlue(0.24) };
 
 /**
  * Gap between the toolbar and the area, where the header's picture shows: 68pt on today's phones, down to 14pt on a
@@ -235,34 +235,16 @@ export function RoomCalendarScreen() {
         {/* Up here instead of floating over the schedule's last hours. */}
         <HeaderActionButton testID="rooms-book" icon={PlusIcon} label={t('rooms.book')} onPress={book} />
       </View>
-      {/* The area in a frosted pill over the month, where the picture leaves room for a long name. */}
-      <Pressable
-        testID="rooms-header-subtitle"
-        accessibilityRole="button"
-        accessibilityLabel={area.name}
-        accessibilityHint={t('rooms.chooseArea')}
-        onPress={area.open}
-        hitSlop={6}
-        className="h-7 max-w-full flex-row items-center gap-1 self-start rounded-full pl-2.5 pr-2 active:opacity-70"
-        style={{ marginTop: pictureGap(windowHeight), backgroundColor: onBlue(0.16), borderWidth: 1, borderColor: onBlue(0.2) }}
-      >
-        <Icon icon={MapPinIcon} size={14} rawColor={fg} />
-        <Text weight="semibold" numberOfLines={1} maxFontSizeMultiplier={1.2} className="flex-shrink" style={{ fontSize: 13, lineHeight: 17, color: fg }}>
-          {area.name}
-        </Text>
-        <Icon icon={ChevronDownIcon} size={14} weight="bold" rawColor={onBlue(0.75)} />
-      </Pressable>
-      <View className="mt-2 flex-row">
-        <MonthTitle dateKey={dateKey} onPress={() => setDatePicker(true)} />
-      </View>
-      {/* The week on a deep frosted band: the towers only show faintly through it, so the dates (weekends at 45%) stay clear. */}
+      {/* The card is 1pt shorter than the white pill over the stamp was, so 1pt more sky keeps the header's height. */}
+      <WhereWhen style={{ marginTop: pictureGap(windowHeight) + 1 }} areaName={area.name} dateKey={dateKey} onArea={area.open} onDate={() => setDatePicker(true)} />
+      {/* The week in the same glass as the card above, radius 20 round the white tile's 14, gliding under the selected day (DayStrip `capsule`). */}
       {/* The area and month sit close over the band; the robot stands right of the month's ⌄ (CalendarHeaderArt). */}
-      <View className="mt-3.5 flex-row items-center rounded-[16px] p-1" style={{ backgroundColor: scheme === 'dark' ? WEEK_BAND.dark : WEEK_BAND.light, borderWidth: 1, borderColor: onBlue(0.16) }}>
+      <View className="mt-3.5 flex-row items-center rounded-[20px] p-1" style={GLASS}>
         <Pressable accessibilityRole="button" accessibilityLabel={t('rooms.previousDay')} onPress={() => shift(-1)} hitSlop={4} className="h-14 w-7 items-center justify-center active:opacity-60">
           <Icon icon={ChevronLeftIcon} size={17} weight="bold" rawColor={onBlue(0.8)} />
         </Pressable>
         <View className="flex-1">
-          <DayStrip testID="rooms-day" variant="calendar" value={dateKey} today={today} onChange={selectDay} start={weekStart} marked={busyDays} className="" />
+          <DayStrip testID="rooms-day" variant="capsule" value={dateKey} today={today} onChange={selectDay} start={weekStart} marked={busyDays} className="" />
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={t('rooms.nextDay')} onPress={() => shift(1)} hitSlop={4} className="h-14 w-7 items-center justify-center active:opacity-60">
           <Icon icon={ChevronRightIcon} size={17} weight="bold" rawColor={onBlue(0.8)} />
@@ -415,29 +397,70 @@ function GlassButton({ icon, label, onPress, testID }: { icon: AppIcon; label: s
   );
 }
 
-/** The month as the header's headline: "Tháng 10" with the year lighter beside it; opens the date picker. */
-function MonthTitle({ dateKey, onPress }: { dateKey: DateKey; onPress: () => void }) {
+/** A white disc on the glass: what can be tapped on this header. */
+function WhiteDisc({ icon, size, glyph }: { icon: AppIcon; size: number; glyph: number }) {
+  const { colors } = useTheme();
+  return (
+    <View className="items-center justify-center rounded-full" style={{ width: size, height: size, backgroundColor: colors['header-name'] }}>
+      <Icon icon={icon} size={glyph} weight="bold" rawColor={colors.header} />
+    </View>
+  );
+}
+
+/**
+ * Where and when under the toolbar: one glass card of two buttons split by a hairline, each ending in the same white ⌄
+ * disc so the two line up: the area (white pin disc, the name), then the month as a date stamp (a big numeral, a
+ * hairline, "THÁNG" over the year). Narrow, so the robot and the tower keep the sky right of it.
+ */
+function WhereWhen({ areaName, dateKey, onArea, onDate, style }: { areaName: string; dateKey: DateKey; onArea: () => void; onDate: () => void; style?: StyleProp<ViewStyle> }) {
   const { t } = useTranslation();
   const { fg } = useHeaderColors();
   const { month, year } = parseDateKey(dateKey);
-  return (
-    <Pressable
-      testID="rooms-date"
-      accessibilityRole="button"
-      accessibilityLabel={`${t('rooms.chooseDate')}: ${formatKey(dateKey)}`}
-      onPress={onPress}
-      hitSlop={8}
-      className="min-w-0 flex-shrink flex-row items-center gap-1.5 active:opacity-70"
-    >
-      {/* Each span repeats the size: <Text> adds the 14/20 body class, which would clip the headline. */}
-      <Text numberOfLines={1} className="flex-shrink" style={{ fontSize: 24, lineHeight: 30, letterSpacing: -0.5 }}>
-        <Text weight="bold" style={{ fontSize: 24, lineHeight: 30, color: fg }}>
-          {t('rooms.month', { month })}
-        </Text>
-        <Text weight="medium" style={{ fontSize: 24, lineHeight: 30, color: onBlue(0.55) }}>{` ${year}`}</Text>
+  const areaButton = { testID: 'rooms-header-subtitle', accessibilityRole: 'button' as const, accessibilityLabel: areaName, accessibilityHint: t('rooms.chooseArea'), onPress: onArea, hitSlop: 6 };
+  const dateButton = { testID: 'rooms-date', accessibilityRole: 'button' as const, accessibilityLabel: `${t('rooms.chooseDate')}: ${formatKey(dateKey)}`, onPress: onDate, hitSlop: 6 };
+
+  const areaRow = (
+    <>
+      <WhiteDisc icon={MapPinIcon} size={22} glyph={11} />
+      <Text weight="bold" numberOfLines={1} maxFontSizeMultiplier={1.15} className="min-w-0 flex-shrink" style={{ fontSize: 12, lineHeight: 15, color: fg }}>
+        {areaName}
       </Text>
-      <Icon icon={ChevronDownIcon} size={16} weight="bold" rawColor={onBlue(0.7)} />
-    </Pressable>
+      {/* Takes the slack when the month is the wider button, so both ⌄ discs end in line. */}
+      <View className="flex-1" />
+      <WhiteDisc icon={ChevronDownIcon} size={22} glyph={12} />
+    </>
+  );
+  const stamp = (
+    <>
+      <Text numeric weight="bold" maxFontSizeMultiplier={1} style={{ fontSize: 52, lineHeight: 54, letterSpacing: -2.5, color: fg }}>
+        {String(month).padStart(2, '0')}
+      </Text>
+      <View className="mx-3 h-[34px] w-px" style={{ backgroundColor: onBlue(0.32) }} />
+      <View>
+        <Text weight="bold" maxFontSizeMultiplier={1.2} className="uppercase" style={{ fontSize: 11, lineHeight: 14, letterSpacing: 1.6, color: onBlue(0.66) }}>
+          {t('rooms.monthLabel')}
+        </Text>
+        <Text numeric weight="bold" maxFontSizeMultiplier={1.2} style={{ fontSize: 19, lineHeight: 24, color: fg }}>
+          {year}
+        </Text>
+      </View>
+      <View className="flex-1" />
+      <View className="ml-3">
+        <WhiteDisc icon={ChevronDownIcon} size={22} glyph={12} />
+      </View>
+    </>
+  );
+
+  return (
+    <View className="max-w-[56%] self-start overflow-hidden rounded-[20px]" style={[GLASS, style]}>
+      <Pressable {...areaButton} className="h-9 flex-row items-center gap-1.5 pl-2 pr-2 active:opacity-70">
+        {areaRow}
+      </Pressable>
+      <View className="mx-2 h-px" style={{ backgroundColor: onBlue(0.18) }} />
+      <Pressable {...dateButton} className="flex-row items-center pb-0.5 pl-3 pr-2 active:opacity-70">
+        {stamp}
+      </Pressable>
+    </View>
   );
 }
 

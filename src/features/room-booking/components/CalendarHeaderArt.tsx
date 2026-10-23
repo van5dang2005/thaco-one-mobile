@@ -66,14 +66,11 @@ const palettes = {
     hall: ['#8FA5C0', '#6A82A2'],
     hallStripe: '#4A6283',
     hallStripeOpacity: 0.4,
-    pole: '#E8EEF5',
-    flagOpacity: 1,
     canopy: '#F7F9FC',
     canopyShade: '#93A8C2',
     storefront: ['#1F426F', '#132C4F'],
     sign: '#E8C25A',
     signGlowOpacity: 0,
-    hedge: ['#46AD78', '#277A55'],
     robot: '#FFFFFF',
     robotShade: '#C3D0E0',
     visor: '#1D2838',
@@ -136,14 +133,11 @@ const palettes = {
     hall: ['#22395A', '#172C47'],
     hallStripe: '#0B1A2E',
     hallStripeOpacity: 0.6,
-    pole: '#5E7493',
-    flagOpacity: 0.55,
     canopy: '#33547C',
     canopyShade: '#13243C',
     storefront: ['#0E1F38', '#081428'],
     sign: '#FFD27A',
     signGlowOpacity: 0.35,
-    hedge: ['#1D524C', '#123532'],
     robot: '#A7B9D0',
     robotShade: '#5E7493',
     visor: '#060C18',
@@ -160,7 +154,7 @@ const palettes = {
 // ---- helpers ------------------------------------------------------------------------------------
 // Bottom-aligned, the header's rows land on fixed heights (iPhone 17 Pro): toolbar y ≈ 65–97 (≈ 98 on Android),
 // area ≈ 163–184, month ≈ 192–217 with its chevron ending near x 206, week band ≈ 231–284 (less picture gap on short
-// screens moves the upper rows down). The complex stands right of the month, the robot (from x 214) clear of the
+// screens moves the upper rows down). The complex stands right of the month, the robot (from x 220) clear of the
 // chevron, the tower's roof (106) below the toolbar, and the ground (229) just above the week band.
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -274,7 +268,7 @@ const runAt = (y: number): PlanPoint[] => {
  * The tower's box in the scene: right of the month, a little lower and stouter than the photo's proportions (the
  * user's call), its roof below the toolbar so it never runs under "Đặt phòng".
  */
-const TOWER_BOX = { x0: 230, x1: 328, top: 106, foot: 195 };
+const TOWER_BOX = { x0: 236, x1: 334, top: 106, foot: 195 };
 const FIT = (() => {
   const raw = [0, VIEW.height].flatMap((y) => runAt(y).map((p) => project(p, y)));
   const xs = raw.map(([x]) => x);
@@ -406,15 +400,14 @@ const merge = (trees: ReturnType<typeof tree>[]) => ({
   front: trees.map((t) => t.front).join(''),
   light: trees.map((t) => t.light).join(''),
 });
-const ROOF_TREES = merge([tree(330, 199.2, 0.8)]);
-const STREET_TREES = merge([tree(371, 222, 1.3), tree(389, 221.5, 1.2)]);
+const ROOF_TREES = merge([tree(336, 199.2, 0.8)]);
 
 /**
  * The podium, after the photos: a long low block of dark glass with lighter panes in uneven strips under a grey
  * fascia, its left end rounded, the yellow banner near its right end. Behind it on the right a wing of glass fins,
  * Thiskyhall's grey striped block above that. It starts under the tower, leaving the month's chevron on sky.
  */
-const PODIUM = { x0: 229, x1: 332, fascia: 2.8 };
+const PODIUM = { x0: 235, x1: 338, fascia: 2.8 };
 const PODIUM_BODY = `M${PODIUM.x0} ${GROUND}V${PODIUM_TOP + 4}Q${PODIUM.x0} ${PODIUM_TOP} ${PODIUM.x0 + 4} ${PODIUM_TOP}H${PODIUM.x1}V${GROUND}Z`;
 const FASCIA = `M${PODIUM.x0} ${PODIUM_TOP + PODIUM.fascia}V${PODIUM_TOP + 4}Q${PODIUM.x0} ${PODIUM_TOP} ${PODIUM.x0 + 4} ${PODIUM_TOP}H${PODIUM.x1}V${PODIUM_TOP + PODIUM.fascia}Z`;
 const PODIUM_EDGE = box(PODIUM.x0 + 3, PODIUM_TOP, PODIUM.x1 - PODIUM.x0 - 3, 0.7);
@@ -433,16 +426,17 @@ const PANES = (() => {
 const PODIUM_MULLIONS = steps(PODIUM.x0 + 4, PODIUM.x1, 4.2)
   .map((x) => box(x, PODIUM_TOP + PODIUM.fascia, 0.35, 218 - PODIUM_TOP - PODIUM.fascia))
   .join('');
-const BANNER = { x: 313, y: PODIUM_TOP + PODIUM.fascia, w: 4.4, h: 10 };
+const BANNER = { x: 319, y: PODIUM_TOP + PODIUM.fascia, w: 4.4, h: 10 };
 const BANNER_INK = box(BANNER.x + 1, BANNER.y + 2.2, BANNER.w - 2, 0.6) + box(BANNER.x + 1, BANNER.y + 3.6, BANNER.w - 2, 0.6) + box(BANNER.x + 1.6, BANNER.y + 5, BANNER.w - 3.2, 0.6);
 const BANNER_TAIL = `M${BANNER.x} ${BANNER.y + BANNER.h}l${BANNER.w / 2} -1.4l${BANNER.w / 2} 1.4Z`;
-const WING = { x0: 331.5, x1: 378, top: 206.5 };
+/** The wing runs to the drawing's right edge, so it meets the phone's edge whatever the header's height crops. */
+const WING = { x0: 337.5, x1: 400, top: 206.5 };
 const WING_BODY = box(WING.x0, WING.top, WING.x1 - WING.x0, GROUND - WING.top);
 const WING_EDGE = box(WING.x0, WING.top, WING.x1 - WING.x0, 0.7);
 const WING_FINS = steps(WING.x0 + 2, WING.x1, 2.6)
   .map((x) => box(x, WING.top + 0.7, 0.45, GROUND - WING.top - 0.7))
   .join('');
-const HALL = { x0: 335, x1: 372, top: 199 };
+const HALL = { x0: 341, x1: 378, top: 199 };
 const HALL_BODY = box(HALL.x0, HALL.top, HALL.x1 - HALL.x0, WING.top - HALL.top);
 const HALL_STRIPES = steps(HALL.top + 1.8, WING.top, 2)
   .map((y) => box(HALL.x0, y, HALL.x1 - HALL.x0, 0.6))
@@ -450,37 +444,27 @@ const HALL_STRIPES = steps(HALL.top + 1.8, WING.top, 2)
 
 /** Street level: the white canopy with the gold Thisofic sign over the lobby on the left, shops to the right. */
 const STREET_TOP = 218;
-const CANOPY = { x0: 227, x1: 270, y: 218.2, h: 2.2 };
+const CANOPY = { x0: 233, x1: 276, y: 218.2, h: 2.2 };
 const CANOPY_BODY = box(CANOPY.x0, CANOPY.y, CANOPY.x1 - CANOPY.x0, CANOPY.h);
 const CANOPY_SHADE = box(CANOPY.x0 + 1, CANOPY.y + CANOPY.h, CANOPY.x1 - CANOPY.x0 - 2, 0.8);
-const SIGN = { x: 239, y: CANOPY.y + 0.4, w: 15, h: 1.4 };
+const SIGN = { x: 245, y: CANOPY.y + 0.4, w: 15, h: 1.4 };
 const LOBBY = box(PODIUM.x0, CANOPY.y + CANOPY.h, CANOPY.x1 - PODIUM.x0, GROUND - CANOPY.y - CANOPY.h);
 const LOBBY_FRAMES = steps(PODIUM.x0 + 4.5, CANOPY.x1 - 1, 5.2)
   .map((x) => box(x, CANOPY.y + CANOPY.h, 0.5, GROUND - CANOPY.y - CANOPY.h))
   .join('');
-const CANOPY_POSTS = box(231, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h) + box(266.5, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h);
+const CANOPY_POSTS = box(237, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h) + box(272.5, CANOPY.y + CANOPY.h, 1.6, GROUND - CANOPY.y - CANOPY.h);
 const STOREFRONT = box(CANOPY.x1, STREET_TOP, PODIUM.x1 - CANOPY.x1, GROUND - STREET_TOP);
 const STORE_MULLIONS = steps(CANOPY.x1 + 2.5, PODIUM.x1, 3.6)
   .map((x) => box(x, STREET_TOP + 0.6, 0.4, GROUND - STREET_TOP - 0.6))
   .join('');
 const STORE_AWNING = box(CANOPY.x1, STREET_TOP, PODIUM.x1 - CANOPY.x1, 0.9);
-/** Flags on white poles in front of the shops: the national flag's red between the company colours. */
-const FLAG_XS = steps(275, 328, 7);
-const FLAG_COLORS = ['#DA251D', '#F5C518', '#2F6FE0', '#DA251D', '#2BAE66', '#9B59D0', '#DA251D'];
-const POLES = FLAG_XS.map((x) => box(x, 218.6, 0.45, GROUND - 218.6)).join('');
-const FLAGS = FLAG_XS.map((x, i) => ({ color: FLAG_COLORS[i % FLAG_COLORS.length], d: `M${x + 0.45} 219h2.6v3.6l-1.3 -0.8l-1.3 0.8Z` }));
-/** A low clipped hedge along the street, bumps of two sizes. */
-const HEDGE = (() => {
-  const bumps = steps(172, 384, 5);
-  return `M172 ${GROUND + 1}` + bumps.map((x, i) => `C${r2(x + 0.4)} ${r2(GROUND - 3.6 - (i % 3 === 1 ? 0.8 : 0))} ${r2(x + 4.6)} ${r2(GROUND - 3.6 - (i % 3 === 1 ? 0.8 : 0))} ${r2(x + 5)} ${GROUND - 0.6}`).join('') + `V${GROUND + 1}Z`;
-})();
 
 /**
  * The white robot standing left of the canopy, in front of the podium's curved end, drawn on a 40 × 44 grid (feet at
  * 44) and scaled down: a wide head with two pointed fins and round ears, a dark visor with big cyan eyes, a round body
  * with the blue emblem, arms down. With the complex moved right it stands clear of the month's chevron.
  */
-const ROBOT = { x: 214, s: 0.45 };
+const ROBOT = { x: 220, s: 0.45 };
 const ROBOT_Y = GROUND - 44 * ROBOT.s;
 const ROBOT_TRANSFORM = `translate(${ROBOT.x} ${r2(ROBOT_Y)}) scale(${ROBOT.s})`;
 const ROBOT_EARS = disc(2.2, 15, 3.4) + disc(37.8, 15, 3.4);
@@ -491,8 +475,8 @@ const ROBOT_PUPILS = disc(13.5, 15.2, 2.1) + disc(26.5, 15.2, 2.1);
 const ROBOT_GLINTS = disc(12.3, 13.7, 0.9) + disc(25.3, 13.7, 0.9);
 const ROBOT_FEET = pill(11, 39.5, 7.5, 4.5) + pill(21.5, 39.5, 7.5, 4.5);
 
-/** Day clouds, `[x, y, scale, opacity]`: two drift through the gap between the toolbar and the area. */
-const CLOUDS: [number, number, number, number][] = [[150, 128, 0.9, 0.14], [352, 142, 0.7, 0.16], [52, 72, 0.6, 0.1], [372, 62, 0.55, 0.12]];
+/** Day clouds, `[x, y, scale, opacity]`, only right of the tower: the sky over the title, area and month stays clear. */
+const CLOUDS: [number, number, number, number][] = [[352, 142, 0.7, 0.16], [372, 62, 0.55, 0.12]];
 const CLOUD_PATHS = CLOUDS.map(([x, y, s, opacity]) => ({ opacity, d: cloud(x, y, s) }));
 /** Night stars, `[x, y, radius]`, in three brightnesses. */
 const STARS: { opacity: number; points: [number, number, number][] }[] = [
@@ -523,7 +507,7 @@ const LIT = (() => {
 /** Night windows lower down: the podium's panes, the wing and the shops. */
 const GROUND_LIT = (() => {
   const lit: string[] = [];
-  steps(334, 376, 2.6).forEach((x, i) => {
+  steps(WING.x0 + 2.5, WING.x1 - 2, 2.6).forEach((x, i) => {
     if (hash(i, 2, 11) % 4 === 0) lit.push(box(x + 0.6, 209, 1.5, 8));
   });
   steps(CANOPY.x1 + 0.6, PODIUM.x1 - 2, 3.6).forEach((x) => lit.push(box(x + 0.5, STREET_TOP + 2, 2.6, GROUND - STREET_TOP - 3)));
@@ -533,7 +517,7 @@ const GROUND_LIT = (() => {
 /**
  * The room calendar header's picture: Sofic Tower over its podium (the Thisofic complex, where Văn phòng SOFIC is),
  * drawn after the user's photos, by day or by night with the theme, ending above the week band: the banded glass
- * tower on its white columns, the podium with its panes, flags and the yellow banner, the wing and Thiskyhall behind
+ * tower on its white columns, the podium with its panes and the yellow banner, the wing and Thiskyhall behind
  * it, the canopy and its sign, and the white robot out front. Day adds rays and clouds; night stars, lit offices and
  * shops, the glowing roof rim, sign and robot eyes. A scrim at the top keeps the status bar readable.
  */
@@ -593,8 +577,8 @@ export const CalendarHeaderArt = memo(function CalendarHeaderArt() {
           <Stop offset="0" stopColor={c.podium[0]} />
           <Stop offset="1" stopColor={c.podium[1]} />
         </LinearGradient>
-        {/* The podium's form: its rounded left end turning away with a glint just inside, the right end in shade. */}
-        <LinearGradient id="rcPodiumForm" x1={PODIUM.x0} y1="0" x2={WING.x1} y2="0" gradientUnits="userSpaceOnUse">
+        {/* The podium's form: its rounded left end turning away with a glint just inside, darkening into the wing (149 across). */}
+        <LinearGradient id="rcPodiumForm" x1={PODIUM.x0} y1="0" x2={PODIUM.x0 + 149} y2="0" gradientUnits="userSpaceOnUse">
           <Stop offset="0" stopColor={c.turn} stopOpacity={c.turnOpacity * 0.7} />
           <Stop offset="0.025" stopColor={c.turn} stopOpacity={0} />
           <Stop offset="0.045" stopColor={c.light} stopOpacity={c.lightOpacity * 0.5} />
@@ -621,10 +605,6 @@ export const CalendarHeaderArt = memo(function CalendarHeaderArt() {
         <LinearGradient id="rcTreeBack" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={c.treeBack[0]} />
           <Stop offset="1" stopColor={c.treeBack[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcHedge" x1="0" y1={GROUND - 3} x2="0" y2={GROUND + 1} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.hedge[0]} />
-          <Stop offset="1" stopColor={c.hedge[1]} />
         </LinearGradient>
         <RadialGradient id="rcSignGlow" cx={SIGN.x + SIGN.w / 2} cy={SIGN.y + SIGN.h / 2} r="14" gradientUnits="userSpaceOnUse">
           <Stop offset="0" stopColor={c.sign} stopOpacity={c.signGlowOpacity} />
@@ -711,7 +691,7 @@ export const CalendarHeaderArt = memo(function CalendarHeaderArt() {
       <Path d={BANNER_TAIL} fill={c.podium[0]} />
       <Path d={BANNER_INK} fill={c.bannerInk} fillOpacity={0.55} />
 
-      {/* Street level, ending above the week band: the shops, the lobby under the canopy, flags, trees, the hedge. */}
+      {/* Street level, ending above the week band: the shops and the lobby under the canopy. */}
       <G clipPath="url(#rcGroundClip)">
         <Path d={STOREFRONT} fill="url(#rcStore)" />
         <Path d={STORE_MULLIONS} fill={c.podiumMullion} fillOpacity={c.podiumMullionOpacity} />
@@ -720,20 +700,12 @@ export const CalendarHeaderArt = memo(function CalendarHeaderArt() {
         <Path d={LOBBY_FRAMES} fill={c.canopy} fillOpacity={0.35} />
         <Path d={GROUND_LIT} fill={c.lit} fillOpacity={c.litOpacity} />
         <Path d={PODIUM_BODY} fill="url(#rcPodiumForm)" />
-        <Path d={POLES} fill={c.pole} />
-        {FLAGS.map(({ color, d }, i) => (
-          <Path key={i} d={d} fill={color} fillOpacity={c.flagOpacity} />
-        ))}
         <Path d={CANOPY_POSTS} fill={c.canopy} />
         <Path d={CANOPY_SHADE} fill={c.canopyShade} />
         <Path d={CANOPY_BODY} fill={c.canopy} />
         <Rect x={SIGN.x - 14} y={SIGN.y - 12} width={SIGN.w + 28} height={SIGN.h + 24} fill="url(#rcSignGlow)" />
         <Rect x={SIGN.x} y={SIGN.y} width={SIGN.w} height={SIGN.h} rx={0.5} fill={c.sign} />
-        <Path d={STREET_TREES.back} fill="url(#rcTreeBack)" />
-        <Path d={STREET_TREES.front} fill="url(#rcTree)" />
-        <Path d={STREET_TREES.light} fill={c.treeLight} fillOpacity={c.treeLightOpacity} />
       </G>
-      <Path d={HEDGE} fill="url(#rcHedge)" />
 
       {/* The robot, white on the blue, its eyes glowing at night. */}
       <G transform={ROBOT_TRANSFORM}>
