@@ -381,6 +381,15 @@ const vi = {
     install: 'Cập nhật ngay',
     later: 'Để sau',
     failed: 'Không tải được bản cập nhật. Vui lòng thử lại sau.',
+    store: {
+      title: 'Cần cập nhật ứng dụng',
+      body: 'THACO ONE đã có phiên bản mới trên {{store}}. Vui lòng cập nhật để tiếp tục sử dụng.',
+      current: 'Đang dùng',
+      latest: 'Bản mới',
+      action: 'Cập nhật trên {{store}}',
+      keepsData: 'Dữ liệu và đăng nhập được giữ nguyên',
+      openFailed: 'Không mở được {{store}}. Vui lòng mở {{store}} và cập nhật THACO ONE.',
+    },
   },
   documents: {
     title: 'Văn thư',

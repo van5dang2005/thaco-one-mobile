@@ -19,7 +19,7 @@ import { restoreSession } from '@/core/session/session';
 import { useSessionStore } from '@/core/session/sessionStore';
 import { monoAssets, uiAssets } from '@/core/theme/fonts';
 import { ThemeProvider, useTheme } from '@/core/theme/ThemeProvider';
-import { UpdatePrompt } from '@/features/app-update/components/UpdatePrompt';
+import { AppUpdateGate } from '@/features/app-update/components/AppUpdateGate';
 import { ToastHost } from '@/shared/ui/Toast';
 
 startCrashReporting();
@@ -63,7 +63,7 @@ function RootNavigator() {
         </Stack.Protected>
       </Stack>
       <ToastHost />
-      <UpdatePrompt />
+      <AppUpdateGate />
     </NavigationThemeProvider>
   );
 }

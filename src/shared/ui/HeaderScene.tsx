@@ -82,6 +82,8 @@ type Props = {
   stars: [number, number, number][][];
   /** The scene's subject, standing on the ground over the far skyline; `night` follows the theme. */
   children: (night: boolean) => ReactNode;
+  /** What the picture eases into under the ground: the canvas behind module cards (default), or a dialog's surface. */
+  fadeTo?: string;
 };
 
 /**
@@ -89,7 +91,7 @@ type Props = {
  * by day or stars by night, and a low hazy skyline that fades into the canvas under the ground, behind the cards. The
  * scene's subject goes in `children`; a scrim at the top keeps the status bar readable.
  */
-export function HeaderScene({ id, clouds, stars, children }: Props) {
+export function HeaderScene({ id, clouds, stars, children, fadeTo }: Props) {
   const { scheme, colors } = useTheme();
   const c = palettes[scheme];
   const night = scheme === 'dark';
@@ -115,8 +117,8 @@ export function HeaderScene({ id, clouds, stars, children }: Props) {
         </LinearGradient>
         {/* From the ground the picture eases into the canvas, reaching it at the bottom edge. */}
         <LinearGradient id={`${id}Fade`} x1="0" y1={G} x2="0" y2={H} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={colors.canvas} stopOpacity={0} />
-          <Stop offset="1" stopColor={colors.canvas} />
+          <Stop offset="0" stopColor={fadeTo ?? colors.canvas} stopOpacity={0} />
+          <Stop offset="1" stopColor={fadeTo ?? colors.canvas} />
         </LinearGradient>
         <LinearGradient id={`${id}Scrim`} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={c.scrim} stopOpacity={c.scrimOpacity} />

@@ -381,6 +381,15 @@ const en: Translation = {
     install: 'Update now',
     later: 'Later',
     failed: 'Could not download the update. Please try again later.',
+    store: {
+      title: 'Update required',
+      body: 'A new version of THACO ONE is available on {{store}}. Please update to keep using the app.',
+      current: 'Installed',
+      latest: 'New',
+      action: 'Update on {{store}}',
+      keepsData: 'Your data and sign-in are kept',
+      openFailed: 'Could not open {{store}}. Please open {{store}} and update THACO ONE.',
+    },
   },
   documents: {
     title: 'Official documents',
