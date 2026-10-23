@@ -27,12 +27,15 @@ const CONFETTI = [
   { x: 108, y: -24, w: 5, h: 5, rotate: 10, color: 'danger' },
 ] as const;
 
-/** "Check-in thành công!" (guest check-in, step 3): the group, when it passed the gate, head count and place. */
+/**
+ * "Check-in thành công!" or, after letting a group out (`kind` out), "Check-out thành công!": the group, when it passed
+ * the gate, head count and place.
+ */
 export function GuestCheckInSuccessScreen() {
   const { t } = useTranslation();
   const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ name?: string; at?: string; count?: string; location?: string }>();
+  const params = useLocalSearchParams<{ kind?: string; name?: string; at?: string; count?: string; location?: string }>();
   const at = parseServerDate(params.at);
 
   useFocusEffect(
@@ -76,7 +79,7 @@ export function GuestCheckInSuccessScreen() {
 
         <Animated.View entering={FadeInDown.delay(150).duration(320)} className="w-full items-center gap-2">
           <Text weight="bold" accessibilityRole="header" className="text-center" style={{ fontSize: 24, lineHeight: 31 }}>
-            {t('guestSchedule.success.title')}
+            {t(params.kind === 'out' ? 'guestSchedule.success.titleOut' : 'guestSchedule.success.title')}
           </Text>
           {params.name ? (
             <Text weight="semibold" className="mt-2 text-center text-ink-2" style={{ fontSize: 17, lineHeight: 23 }}>

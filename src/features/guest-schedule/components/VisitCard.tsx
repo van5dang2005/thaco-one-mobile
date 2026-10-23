@@ -14,9 +14,9 @@ import { Text } from '@/shared/ui/Text';
 import type { GuestScheduleItem, GuestVisitStatus } from '../types';
 import { visitEnd, visitStart } from '../utils/dashboard';
 
-export const visitStatusKinds: Record<GuestVisitStatus, BadgeKind> = { pending: 'warn', checkedIn: 'live', checkedOut: 'off' };
+export const visitStatusKinds: Record<GuestVisitStatus, BadgeKind> = { pending: 'warn', checkedIn: 'live', checkedOut: 'off', rejected: 'danger' };
 /** Colour of the card's left edge per status. */
-const edgeColors: Record<GuestVisitStatus, ColorToken> = { pending: 'warning', checkedIn: 'success', checkedOut: 'subtle' };
+const edgeColors: Record<GuestVisitStatus, ColorToken> = { pending: 'warning', checkedIn: 'success', checkedOut: 'subtle', rejected: 'danger' };
 
 /**
  * One visit: the status edge, start over end (times, or days for a visit over several days), a hairline, then the

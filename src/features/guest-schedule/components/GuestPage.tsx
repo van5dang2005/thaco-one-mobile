@@ -1,21 +1,16 @@
-import { useFocusEffect } from 'expo-router';
-import { setStatusBarStyle } from 'expo-status-bar';
-import { type ReactNode, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
+import { useLightStatusBar } from '@/shared/ui/ScreenShell';
 
 /** The guest screens' background: one even, cool grey, so the white cards and the header picture stand out on it. */
 export const guestPageColors = { light: '#ECEFF3', dark: '#0B1420' };
 
-/** Root of a guest screen: the even background and a status bar that reads on it (dark text by day, light at night). */
+/** Root of a guest screen: the even background, and a light status bar over the blue of the header picture. */
 export function GuestPage({ children, testID }: { children: ReactNode; testID?: string }) {
   const { scheme } = useTheme();
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle(scheme === 'dark' ? 'light' : 'dark');
-    }, [scheme]),
-  );
+  useLightStatusBar();
   return (
     <View testID={testID} className="flex-1" style={{ backgroundColor: guestPageColors[scheme] }}>
       {children}

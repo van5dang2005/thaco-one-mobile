@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
@@ -26,12 +27,13 @@ import { useGuestSchedules } from '../hooks/useGuestSchedules';
 import type { GuestScheduleItem, GuestVisitTab } from '../types';
 import { byStart } from '../utils/dashboard';
 
-const TABS: GuestVisitTab[] = ['all', 'pending', 'checkedIn', 'checkedOut'];
+const TABS: GuestVisitTab[] = ['all', 'pending', 'confirmed', 'checkedIn', 'checkedOut'];
 
 /**
- * "Xem tất cả" of the dashboard: the title on the picture of the plant's gate, cut just under the coach driving in, then
+ * "Xem tất cả" of the dashboard: the title on the blue picture of the plant's gate, cut just under it, then
  * on a square-topped grey panel a search field, the status tabs and the day's visits in time order, in a FlatList that
- * loads the next page as it nears the end. A visit opens its details in a sheet.
+ * loads the next page as it nears the end. A visit opens its details in a sheet. Opens on the `tab` param (a dashboard
+ * counter), else on every visit.
  */
 export function GuestListScreen() {
   const { t } = useTranslation();
@@ -39,7 +41,8 @@ export function GuestListScreen() {
   const { scheme } = useTheme();
   const scene = useGuestScene();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<GuestVisitTab>('all');
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<GuestVisitTab>(() => TABS.find((f) => f === params.tab) ?? 'all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<GuestScheduleItem | null>(null);
   const keyword = useDebounced(search.trim(), 350);
@@ -53,7 +56,15 @@ export function GuestListScreen() {
   const visits = flattenPages(query.data?.pages).sort(byStart);
   // The summary has no figure for inside and gone apart, so those two show the tab's own total once it is open.
   const count = (f: GuestVisitTab) =>
-    f === 'all' ? counts?.total : f === 'pending' ? counts?.pending : f === tab && !keyword ? query.data?.pages[0]?.totalCount : undefined;
+    f === 'all'
+      ? counts?.total
+      : f === 'pending'
+        ? counts?.pending
+        : f === 'confirmed'
+          ? counts?.confirmed
+          : f === tab && !keyword
+            ? query.data?.pages[0]?.totalCount
+            : undefined;
   const label = (f: GuestVisitTab) => {
     const name = f === 'all' ? t('guestSchedule.list.all') : t(`guestSchedule.dashboard.status.${f}`);
     const n = count(f);
@@ -75,7 +86,7 @@ export function GuestListScreen() {
         keyboardShouldPersistTaps="handled"
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
-        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />}
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} tintColor="#FFFFFF" />}
         ListHeaderComponent={
           <>
             {/* The picture, edge to edge, with the toolbar on it; the panel below covers the rest of the drawing. */}

@@ -21,6 +21,7 @@ const tabQuery: Record<GuestVisitTab, Query> = {
   confirmed: { securityConfirmed: true },
   checkedIn: { securityCheckInStatus: SecurityCheckInStatus.CheckedIn },
   checkedOut: { securityCheckInStatus: SecurityCheckInStatus.CheckedOut },
+  rejected: { securityCheckInStatus: SecurityCheckInStatus.Rejected },
 };
 
 /** The query of `GET /api/security/guest-schedules/mobile` for a page of a filter; the day goes as both ends. */
@@ -32,7 +33,11 @@ const statuses: Record<SecurityCheckInStatus, GuestVisitStatus> = {
   [SecurityCheckInStatus.Pending]: 'pending',
   [SecurityCheckInStatus.CheckedIn]: 'checkedIn',
   [SecurityCheckInStatus.CheckedOut]: 'checkedOut',
+  [SecurityCheckInStatus.Rejected]: 'rejected',
 };
+
+/** A `securityCheckInStatus` as the app reads it; missing or unknown is still waiting for the guard. */
+export const statusOf = (value: SecurityCheckInStatus | null | undefined): GuestVisitStatus => statuses[value ?? SecurityCheckInStatus.Pending] ?? 'pending';
 
 /** A visit of the list; null when it has no id. */
 export function toScheduleItem(dto: GuestScheduleListItemDto | null | undefined): GuestScheduleItem | null {
@@ -48,7 +53,7 @@ export function toScheduleItem(dto: GuestScheduleListItemDto | null | undefined)
     from: dto.startDate ?? '',
     to: dto.endDate ?? dto.startDate ?? '',
     guestCount: Math.max(0, dto.guestCount ?? 0),
-    status: statuses[dto.securityCheckInStatus ?? SecurityCheckInStatus.Pending] ?? 'pending',
+    status: statusOf(dto.securityCheckInStatus),
   };
 }
 

@@ -1,5 +1,5 @@
 import { type GuestSchedulePageDto, SecurityCheckInStatus } from '../../types';
-import { scheduleQuery, toSchedulePage } from '../schedule';
+import { scheduleQuery, statusOf, toSchedulePage } from '../schedule';
 
 /** Shaped like `GET /api/security/guest-schedules/mobile` as the back-end documents it. */
 const page: GuestSchedulePageDto = {
@@ -51,6 +51,7 @@ describe('scheduleQuery', () => {
     expect(extra('confirmed')).toEqual({ securityCheckInStatus: undefined, securityConfirmed: true });
     expect(extra('checkedIn')).toEqual({ securityCheckInStatus: 1, securityConfirmed: undefined });
     expect(extra('checkedOut')).toEqual({ securityCheckInStatus: 2, securityConfirmed: undefined });
+    expect(extra('rejected')).toEqual({ securityCheckInStatus: 3, securityConfirmed: undefined });
   });
 });
 
@@ -83,5 +84,12 @@ describe('toSchedulePage', () => {
   it('keeps the paging fields', () => {
     const { totalCount, hasNextPage, pageNumber } = toSchedulePage({ ...page, hasNextPage: true });
     expect({ totalCount, hasNextPage, pageNumber }).toEqual({ totalCount: 3, hasNextPage: true, pageNumber: 1 });
+  });
+});
+
+describe('statusOf', () => {
+  it('reads every securityCheckInStatus, a missing one as still waiting', () => {
+    expect([0, 1, 2, 3].map((value) => statusOf(value))).toEqual(['pending', 'checkedIn', 'checkedOut', 'rejected']);
+    expect(statusOf(null)).toBe('pending');
   });
 });

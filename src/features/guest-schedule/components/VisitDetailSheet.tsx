@@ -1,15 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { qk } from '@/core/query/keys';
-import { formatDayMonth, formatTime, isSameVnDay } from '@/core/time/vn';
+import { formatDayMonth, formatTime, isSameVnDay, parseServerDate } from '@/core/time/vn';
 import { cn } from '@/shared/lib/cn';
 import { Avatar } from '@/shared/ui/Avatar';
+import { Banner } from '@/shared/ui/Banner';
 import { BottomSheet } from '@/shared/ui/BottomSheet';
+import { Button } from '@/shared/ui/Button';
 import { Icon } from '@/shared/ui/Icon';
-import { type AppIcon, BuildingIcon, CalendarCheckIcon, ClockIcon, LightbulbIcon, UsersIcon } from '@/shared/ui/icons';
+import { type AppIcon, BuildingIcon, CalendarCheckIcon, ClockIcon, LogOutIcon, ShieldCheckIcon, UsersIcon } from '@/shared/ui/icons';
 import type { RoundIconTone } from '@/shared/ui/RoundIcon';
 import { SectionTitle } from '@/shared/ui/SectionTitle';
 import { Skeleton } from '@/shared/ui/Skeleton';
@@ -18,15 +21,17 @@ import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Text } from '@/shared/ui/Text';
 
 import { guestApi } from '../api/guest.api';
-import { GuestError, type GuestScheduleItem, type GuestVisitStatus } from '../types';
+import { type GateRecord, GuestError, type GuestScheduleItem, type GuestVisitStatus } from '../types';
 import { visitEnd, visitStart } from '../utils/dashboard';
 import { visitStatusKinds } from './VisitCard';
 
-const iconTones: Record<GuestVisitStatus, RoundIconTone> = { pending: 'warn', checkedIn: 'ok', checkedOut: 'off' };
+const iconTones: Record<GuestVisitStatus, RoundIconTone> = { pending: 'warn', checkedIn: 'ok', checkedOut: 'off', rejected: 'danger' };
 
 /**
  * A visit of the list in full: the group with its registration number, status and guest type, then head count, start
- * and end, the receiving units, and from the QR lookup the purpose and the guests by name. `visit` null closes it.
+ * and end, the receiving units, and from the QR lookup when it passed the gate and the guests by name. A group inside
+ * that may leave now gets "Xác nhận ra cổng" (the gate screen for its code); one inside that may not yet (office hours,
+ * reception has checked no one in) says why. `visit` null closes it.
  */
 export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem | null; onClose: () => void }) {
   const { t } = useTranslation();
@@ -50,6 +55,15 @@ export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem 
   const extra = details.data;
   // A wrong or ended QR only means there is nothing more to show; anything else (network, server) can be retried.
   const failed = details.isError && !(details.error instanceof GuestError);
+  const gateRecord = (record: GateRecord) => {
+    const at = parseServerDate(record.at);
+    const when = at ? `${formatTime(at)} ${formatDayMonth(at)}` : '';
+    return record.count === null ? when : `${when} · ${t('guestSchedule.view.guests', { count: record.count })}`;
+  };
+  const checkOut = () => {
+    onClose();
+    router.push({ pathname: '/guests/check-in', params: { qr: token } });
+  };
 
   return (
     <BottomSheet
@@ -61,6 +75,11 @@ export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem 
       title={shown.groupName}
       caption={shown.code}
       scrollable
+      footer={
+        extra?.canCheckOut ? (
+          <Button testID="guests-visit-sheet-check-out" icon={LogOutIcon} label={t('guestSchedule.detail.checkOut')} onPress={checkOut} />
+        ) : undefined
+      }
     >
       <View className="flex-row flex-wrap items-center gap-2">
         <StatusBadge kind={visitStatusKinds[shown.status]} label={t(`guestSchedule.dashboard.status.${shown.status}`)} />
@@ -80,15 +99,15 @@ export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem 
           ]}
         />
         {shown.host ? <DetailRow icon={BuildingIcon} label={t('guestSchedule.detail.host')} value={shown.host} /> : null}
-        {details.isLoading ? (
-          <View className="gap-2 border-t border-line-2 px-3.5 py-3">
-            <Skeleton width="30%" height={12} />
-            <Skeleton width="80%" height={14} />
-          </View>
-        ) : extra?.purpose ? (
-          <DetailRow icon={LightbulbIcon} label={t('guestSchedule.detail.purpose')} value={extra.purpose} />
-        ) : null}
+        {extra?.checkIn ? <DetailRow icon={ShieldCheckIcon} label={t('guestSchedule.detail.checkedInAt')} value={gateRecord(extra.checkIn)} /> : null}
+        {extra?.checkOut ? <DetailRow icon={LogOutIcon} label={t('guestSchedule.detail.checkedOutAt')} value={gateRecord(extra.checkOut)} /> : null}
       </View>
+
+      {extra?.status === 'checkedIn' && !extra.canCheckOut ? (
+        <Banner testID="guests-visit-sheet-wait-reception" tone="warning">
+          {t('guestSchedule.view.waitReception')}
+        </Banner>
+      ) : null}
 
       {failed ? (
         <View className="flex-row items-center gap-2">

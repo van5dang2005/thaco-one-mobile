@@ -1,21 +1,36 @@
 import type { Paginated } from '@/core/api/types';
 import type { DateKey } from '@/core/time/vn';
 
-/** `GET /api/GuestSchedules/mobile/qr/{qrCode}`: the fields the app reads (times are UTC). */
+/** A gate record of the group: when the guard let it in or out, how many, and the guard's note. */
+export type GateRecordDto = { time?: string | null; note?: string | null; actualAmount?: number | null };
+
+/**
+ * `GET /api/GuestSchedules/mobile/qr/{qrCode}` (also what check-in and check-out answer): the fields the app reads
+ * (times are UTC). `canCheckOut` holds at the moment of the call (office hours 08:00–17:00 need a reception check-in).
+ */
 export type GuestScheduleDto = {
   guestScheduleId: string;
   /** Registration number, e.g. `AUTO1020260003`. */
   guestCode?: string | null;
   /** "Khách hàng Malaysia - Đàm phán xe tải". */
   guestName?: string | null;
+  guestTypeName?: string | null;
   guestCount?: number | null;
   startDate?: string | null;
   endDate?: string | null;
-  purpose?: string | null;
+  securityCheckInStatus?: SecurityCheckInStatus | null;
+  /** The group has left: the QR only shows it now. */
+  isViewOnly?: boolean | null;
+  canCheckOut?: boolean | null;
+  checkIn?: GateRecordDto | null;
+  checkOut?: GateRecordDto | null;
   /** Units that receive the guests. */
-  workingUnits?: { workingUnitId: string; workingUnitName?: string | null }[] | null;
+  workingUnits?: { workingUnitId?: string; workingUnitName?: string | null }[] | null;
   members?: { memberId: string; fullName?: string | null }[] | null;
 };
+
+/** A gate record: when (ISO, UTC), how many and the guard's note. */
+export type GateRecord = { at: string; count: number | null; note: string | null };
 
 /** A guest visit registration, what a guest QR points to. */
 export type GuestVisit = {
@@ -26,8 +41,6 @@ export type GuestVisit = {
   code?: string;
   /** "Khách hàng Malaysia - Đàm phán xe tải". */
   groupName: string;
-  /** "Đàm phán hợp đồng xuất khẩu xe tải sang Malaysia". */
-  purpose?: string | null;
   /** Registered number of guests. */
   guestCount: number;
   /** Working period of the visit (ISO, UTC; empty when the API gives none). */
@@ -37,6 +50,13 @@ export type GuestVisit = {
   location?: string | null;
   /** Names of the registered guests. */
   members: string[];
+  /** Where the group stands at the gate. */
+  status: GuestVisitStatus;
+  /** Whether the guard may let the group out now (only while it is in). */
+  canCheckOut: boolean;
+  /** When it passed the gate in and out. */
+  checkIn: GateRecord | null;
+  checkOut: GateRecord | null;
 };
 
 /** `securityCheckInStatus` of the list: where the group stands at the gate. */
@@ -47,6 +67,8 @@ export enum SecurityCheckInStatus {
   CheckedIn = 1,
   /** Đã ra cổng. */
   CheckedOut = 2,
+  /** Từ chối: no gate action. */
+  Rejected = 3,
 }
 
 /** An item of `GET /api/security/guest-schedules/mobile` (times are UTC). */
@@ -79,8 +101,8 @@ export type GuestSchedulePageDto = Paginated<GuestScheduleListItemDto> & {
   } | null;
 };
 
-/** Where a visit stands at the gate: waiting for the guard, inside, gone. */
-export type GuestVisitStatus = 'pending' | 'checkedIn' | 'checkedOut';
+/** Where a visit stands at the gate: waiting for the guard, inside, gone, or turned away. */
+export type GuestVisitStatus = 'pending' | 'checkedIn' | 'checkedOut' | 'rejected';
 
 /** A tab of the list: every visit, one status, or `confirmed` (the guard has let them in: inside or gone). */
 export type GuestVisitTab = 'all' | 'confirmed' | GuestVisitStatus;
@@ -113,18 +135,28 @@ export type GuestScheduleCounts = { total: number; pending: number; confirmed: n
 
 export type GuestSchedulePage = Paginated<GuestScheduleItem> & { counts: GuestScheduleCounts };
 
-/** A gate check-in (the guard confirms the group at the gate). */
-export type GuestCheckInInput = {
+/** A gate step the guard confirms, in or out: when, how many and an optional note. */
+export type GateInput = {
   /** ISO, UTC. */
-  checkInAt: string;
+  at: string;
   actualGuestCount: number;
   note?: string;
 };
 
-export type GuestCheckIn = GuestCheckInInput & { visit: GuestVisit };
+export type GatePass = GateInput & { visit: GuestVisit };
 
-/** What a failed lookup or check-in means for the guard, read from the API's status and message. */
-export type GuestErrorCode = 'GUEST_QR_INVALID' | 'GUEST_VISIT_EXPIRED';
+/**
+ * What a failed lookup, check-in or check-out means for the guard: a wrong code, a visit over, or the group's gate
+ * state forbidding the step (the API's own `errorCode`s).
+ */
+export type GuestErrorCode =
+  | 'GUEST_QR_INVALID'
+  | 'GUEST_VISIT_EXPIRED'
+  | 'ALREADY_CHECKED_IN'
+  | 'ALREADY_CHECKED_OUT'
+  | 'CHECKIN_REQUIRED'
+  | 'RECEPTION_CHECKIN_REQUIRED'
+  | 'INVALID_SCHEDULE_STATE';
 
 export class GuestError extends Error {
   readonly code: GuestErrorCode;

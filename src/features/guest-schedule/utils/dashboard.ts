@@ -2,12 +2,12 @@ import { parseServerDate } from '@/core/time/vn';
 
 import type { GuestScheduleItem } from '../types';
 
-/** Where a visit is for the guard: still to come, inside the premises, or gone. */
+/** Where a visit is for the guard: still to come, inside the premises, or gone (turned away counts as gone). */
 export type VisitStage = 'upcoming' | 'inside' | 'left';
 
 export function visitStage(visit: Pick<GuestScheduleItem, 'status'>): VisitStage {
   if (visit.status === 'checkedIn') return 'inside';
-  return visit.status === 'checkedOut' ? 'left' : 'upcoming';
+  return visit.status === 'checkedOut' || visit.status === 'rejected' ? 'left' : 'upcoming';
 }
 
 export const visitStart = (visit: Pick<GuestScheduleItem, 'from'>) => parseServerDate(visit.from) ?? new Date(0);

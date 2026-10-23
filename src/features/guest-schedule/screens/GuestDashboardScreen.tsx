@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { flattenPages } from '@/core/api/types';
@@ -17,26 +17,21 @@ import { EmptyState, ErrorState } from '@/shared/ui/StateViews';
 import { Text } from '@/shared/ui/Text';
 import { type Tone, useToneColors } from '@/shared/ui/tones';
 
-import { GlassCard } from '../components/GlassCard';
-import { GuestPage, guestPageColors } from '../components/GuestPage';
+import { GuestPage } from '../components/GuestPage';
 import { GuestScene, useGuestScene } from '../components/GuestScene';
 import { GuestTopBar } from '../components/GuestTopBar';
 import { VisitCard } from '../components/VisitCard';
 import { VisitDetailSheet } from '../components/VisitDetailSheet';
 import { useGuestSchedules } from '../hooks/useGuestSchedules';
-import type { GuestScheduleItem } from '../types';
+import type { GuestScheduleItem, GuestVisitTab } from '../types';
 import { byStart, visitStage } from '../utils/dashboard';
 
 /** Visits shown here; "Xem tất cả" opens the day's full list. */
 const PREVIEW = 3;
-/** The counter strip at the default text size: 14 padding, 36 icon, 10 gap, 29 figure, 17 label, 14 padding. */
-const STATS_HEIGHT = 120;
-/** Height of the toolbar (`GuestTopBar`). */
-const TOOLBAR_HEIGHT = 150;
-/** Least picture kept above and below the counters. */
-const STATS_GAP = 20;
-/** Extra picture kept above the counters, so the gate and the minibus driving in show whole over them. */
-const STATS_SHIFT = 14;
+/** A counter card at the default text size: 14 padding, 34 icon, 10 gap, 31 figure, 17 label, 14 padding, 3 band. */
+const STATS_HEIGHT = 123;
+/** Grey kept between the gate's foot and the counters, and under them before the day's visits. */
+const STATS_GAP = 18;
 
 /** The `PREVIEW` visits around now: from the first one not yet gone, topped up with earlier ones near the day's end. */
 function previewOf(visits: GuestScheduleItem[]) {
@@ -46,9 +41,9 @@ function previewOf(visits: GuestScheduleItem[]) {
 }
 
 /**
- * "Lịch khách": the title and date on the picture of the plant's gate, with a square strip of three counters centred on
- * it, the visits around now on a grey panel with a straight top edge under it ("Xem tất cả" opens the day's list), and
- * "Quét mã QR" floating at the bottom. A visit opens its details in a sheet.
+ * "Lịch khách": the title and date on the blue picture of the plant's gate, three counter cards under it (each opens the
+ * day's list on its tab), the visits around now ("Xem tất cả" opens the day's list), and "Quét mã QR" floating at the
+ * bottom. A visit opens its details in a sheet.
  */
 export function GuestDashboardScreen() {
   const { t } = useTranslation();
@@ -65,18 +60,18 @@ export function GuestDashboardScreen() {
   const counts = data?.pages[0]?.counts;
   const visits = flattenPages(data?.pages).sort(byStart);
   const bottomEdge = Math.max(insets.bottom, 12);
-  // The picture shown from the toolbar's top down to the panel: the drawing, made taller with yard if the counters need it.
-  const picture = Math.max(scene.height - scene.lift, TOOLBAR_HEIGHT + STATS_SHIFT + statsHeight + STATS_GAP * 2);
-  const statsTop = TOOLBAR_HEIGHT + STATS_SHIFT + (picture - TOOLBAR_HEIGHT - STATS_SHIFT - statsHeight) / 2;
+  // From the toolbar's top: the counters a little under the gate's foot, and the picture ending a little under them.
+  const statsTop = scene.ground + STATS_GAP;
+  const picture = statsTop + statsHeight + STATS_GAP;
 
   return (
     <GuestPage testID="guests-dashboard">
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 8, paddingHorizontal: 16 }}
-        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} />}
+        contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 8 }}
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={() => void pull.onRefresh()} tintColor="#FFFFFF" />}
       >
-        {/* The picture, edge to edge: the toolbar on it and the counters pinned in the middle of what is left under it. */}
-        <View className="-mx-4 px-4" style={{ minHeight: picture }}>
+        {/* The picture, edge to edge: the toolbar on it and the counters pinned under the gate. */}
+        <View className="px-4" style={{ minHeight: picture }}>
           <GuestScene />
           <GuestTopBar
             testID="guests-top"
@@ -84,14 +79,15 @@ export function GuestDashboardScreen() {
             title={t('guestSchedule.dashboard.title')}
             subtitle={t('guestSchedule.dashboard.date', { weekday: t(`time.weekday.${String(weekdayOf(today)) as '0'}`), date: formatKey(today) })}
           />
-          <View testID="guests-stats" onLayout={(e) => setStatsHeight(e.nativeEvent.layout.height)} className="absolute left-4 right-4" style={{ top: statsTop }}>
-            <GlassCard style={{ flexDirection: 'row' }}>
-              <KpiCell tone="wait" icon={UsersIcon} label={t('guestSchedule.dashboard.statTotal')} value={counts?.total} />
-              <StatRule />
-              <KpiCell tone="warn" icon={HourglassIcon} label={t('guestSchedule.dashboard.statPending')} value={counts?.pending} />
-              <StatRule />
-              <KpiCell tone="ok" icon={CircleCheckIcon} label={t('guestSchedule.dashboard.statConfirmed')} value={counts?.confirmed} />
-            </GlassCard>
+          <View
+            testID="guests-stats"
+            onLayout={(e) => setStatsHeight(e.nativeEvent.layout.height)}
+            className="absolute left-4 right-4 flex-row gap-2.5"
+            style={{ top: statsTop }}
+          >
+            <StatCard tab="all" tone="wait" icon={UsersIcon} label={t('guestSchedule.dashboard.statTotal')} value={counts?.total} />
+            <StatCard tab="pending" tone="warn" icon={HourglassIcon} label={t('guestSchedule.dashboard.statPending')} value={counts?.pending} />
+            <StatCard tab="confirmed" tone="ok" icon={CircleCheckIcon} label={t('guestSchedule.dashboard.statConfirmed')} value={counts?.confirmed} />
           </View>
         </View>
 
@@ -155,13 +151,12 @@ export function GuestDashboardScreen() {
 }
 
 /**
- * The panel holding the day's visits under the picture: square-topped and edge to edge in the page's grey, its heading,
- * then the list (`children`), which runs down to the page's end.
+ * The panel holding the day's visits under the picture, on the page itself (the counters' shadow falls on it): its
+ * heading, then the list (`children`), which runs down to the page's end.
  */
 function TodayPanel({ header, bottom, children }: { header: ReactNode; bottom: number; children: ReactNode }) {
-  const { scheme } = useTheme();
   return (
-    <View testID="guests-today" className="-mx-4 flex-grow" style={{ backgroundColor: guestPageColors[scheme] }}>
+    <View testID="guests-today" className="flex-grow">
       <View className="px-4 pb-3 pt-5">{header}</View>
       <View testID="guests-today-list" className="flex-grow px-4" style={{ paddingBottom: bottom }}>
         {children}
@@ -170,28 +165,42 @@ function TodayPanel({ header, bottom, children }: { header: ReactNode; bottom: n
   );
 }
 
-/** A hairline between two counters of the strip. */
-function StatRule() {
-  const { scheme } = useTheme();
-  return <View style={{ width: StyleSheet.hairlineWidth, marginVertical: 14, backgroundColor: scheme === 'dark' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(15, 27, 45, 0.14)' }} />;
-}
-
-/** A counter of the strip: the icon in a tinted square, the figure, the label. */
-function KpiCell({ tone, icon, label, value }: { tone: Tone; icon: AppIcon; label: string; value?: number }) {
+/**
+ * A counter card, opening the day's list on `tab`: the icon on a disc of the tone with a › beside it saying it opens a
+ * list, the figure, the label, and a band of the tone along the foot. It sinks a little while pressed.
+ */
+function StatCard({ tab, tone, icon, label, value }: { tab: GuestVisitTab; tone: Tone; icon: AppIcon; label: string; value?: number }) {
+  const { colors, scheme } = useTheme();
   const c = useToneColors(tone);
   return (
-    <View accessible accessibilityLabel={`${label}: ${value ?? ''}`} style={{ flex: 1, minWidth: 0, gap: 10, padding: 14 }}>
-      <View className="h-9 w-9 items-center justify-center rounded-[10px]" style={{ backgroundColor: c.tint }}>
-        <Icon icon={icon} size={18} rawColor={c.solid} weight="bold" />
+    <Pressable
+      testID={`guests-stat-${tab}`}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value ?? ''}`}
+      onPress={() => router.push({ pathname: '/guests/list', params: { tab } })}
+      className="min-w-0 flex-1 overflow-hidden rounded-[18px] bg-elevated"
+      style={({ pressed }) => ({
+        boxShadow: scheme === 'dark' ? '0px 8px 22px rgba(0, 0, 0, 0.35)' : '0px 1px 2px rgba(15, 27, 45, 0.05), 0px 10px 24px rgba(15, 27, 45, 0.10)',
+        transform: [{ scale: pressed ? 0.96 : 1 }],
+      })}
+    >
+      <View style={{ gap: 10, padding: 14 }}>
+        <View className="flex-row items-center justify-between">
+          <View className="h-[34px] w-[34px] items-center justify-center rounded-full" style={{ backgroundColor: c.solid }}>
+            <Icon icon={icon} size={17} rawColor={colors.elevated} weight="bold" />
+          </View>
+          <Icon icon={ChevronRightIcon} size={18} rawColor={c.solid} weight="bold" />
+        </View>
+        <View>
+          <Text weight="bold" numeric maxFontSizeMultiplier={1.2} className="text-ink" style={{ fontSize: 26, lineHeight: 31, letterSpacing: -0.5 }}>
+            {value === undefined ? '–' : String(value)}
+          </Text>
+          <Text numberOfLines={1} maxFontSizeMultiplier={1.2} className="text-muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+            {label}
+          </Text>
+        </View>
       </View>
-      <View>
-        <Text weight="bold" numeric maxFontSizeMultiplier={1.2} className="text-ink" style={{ fontSize: 24, lineHeight: 29, letterSpacing: -0.4 }}>
-          {value === undefined ? '–' : String(value)}
-        </Text>
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.2} className="text-muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
-          {label}
-        </Text>
-      </View>
-    </View>
+      <View className="h-[3px]" style={{ backgroundColor: c.solid }} />
+    </Pressable>
   );
 }
