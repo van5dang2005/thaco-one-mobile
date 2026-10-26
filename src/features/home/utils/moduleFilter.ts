@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import type { ServiceId } from '@/core/api/ApiError';
 import { env, type PhoneApp } from '@/core/config/env';
 import type { Capability } from '@/core/session/capabilities';
-import { type MyApp, serviceAppCodes, sortApps } from '@/core/session/myApps';
+import { hiddenAppCodes, type MyApp, serviceAppCodes, sortApps } from '@/core/session/myApps';
 import { AppWindowIcon } from '@/shared/ui/icons';
 
 import type { HomeModule, ModuleGroup } from '../modules';
@@ -84,14 +84,15 @@ export function webModule(app: MyApp, os: Os = Platform.OS === 'ios' ? 'ios' : '
 
 /**
  * Home tiles of the portal's `apps`: the `native` tiles of each app with screens here, in portal order, then a
- * `webModule` for every other app (also one whose back-end has no tiles yet). An app listed twice counts once.
+ * `webModule` for every other app (also one whose back-end has no tiles yet). An app listed twice counts once;
+ * `hiddenAppCodes` get no tile.
  */
 export function appModules(apps: readonly MyApp[] | null, native: readonly HomeModule[]): HomeModule[] {
   const seen = new Set<string>();
   const own: HomeModule[] = [];
   const web: HomeModule[] = [];
   for (const app of sortApps(apps ?? [])) {
-    if (seen.has(app.code)) continue;
+    if (seen.has(app.code) || hiddenAppCodes.has(app.code)) continue;
     seen.add(app.code);
     const tiles = native.filter((module) => portalCode(module) === app.code);
     const tile = tiles.length ? null : webModule(app);

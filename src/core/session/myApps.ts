@@ -30,6 +30,9 @@ type MyAppsReply = { data?: MyApp[] | null; success?: boolean; message?: string 
 /** Portal code of each back-end this app has screens for: the app calls a back-end only while `my-apps` lists its code. */
 export const serviceAppCodes: Record<ServiceId, string> = { parcel: 'PARCEL_MANAGEMENT_WEB', room: 'BOOKING_ROOM_WEB' };
 
+/** Portal apps Home never shows: the E-sign test builds (`ESIGN LOCAL` at localhost, `… (UAT)`). */
+export const hiddenAppCodes: ReadonlySet<string> = new Set(['ESIGN_LOCAL', 'ESIGN_WEB_UAT']);
+
 /**
  * Back-ends the portal grants; none while its list is unknown (`null`). A back-end the user lacks answers
  * 401 to every call, each one costing a token refresh.
