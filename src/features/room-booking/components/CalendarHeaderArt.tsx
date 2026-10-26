@@ -1,10 +1,12 @@
 import { memo } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { ClipPath, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
+import { useSceneFrame } from '@/shared/ui/HeaderScene';
 
-// The drawing is 400 × 300 with the ground on the header's bottom edge (`xMidYMax slice`).
+// The drawing is 400 × 300 with the ground on the header's bottom edge (`xMidYMax slice`); on a foldable or a tablet
+// the tower stops growing at a big phone's scale and the sky runs on to the left (`useSceneFrame`).
 
 /**
  * Day: brand blue in the sun, light rays and clouds; Sofic's pale blue glass banded floor by floor with navy slabs, a
@@ -525,205 +527,208 @@ export const CalendarHeaderArt = memo(function CalendarHeaderArt() {
   const { scheme } = useTheme();
   const c = palettes[scheme];
   const night = scheme === 'dark';
+  const { onLayout, viewBox, preserveAspectRatio, left, width: sceneWidth } = useSceneFrame(400, 300);
   return (
     // Sized by absoluteFill alone: percentage sizes on an absolute child resolve against the header's padded content box.
-    <Svg pointerEvents="none" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" style={StyleSheet.absoluteFill}>
-      <Defs>
-        <LinearGradient id="rcSky" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.sky[0]} />
-          <Stop offset="0.55" stopColor={c.sky[1]} />
-          <Stop offset="1" stopColor={c.sky[2]} />
-        </LinearGradient>
-        <RadialGradient id="rcGlow" cx="372" cy="60" r="240" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.glow} stopOpacity={c.glowOpacity} />
-          <Stop offset="1" stopColor={c.glow} stopOpacity={0} />
-        </RadialGradient>
-        <LinearGradient id="rcHaze" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.haze} stopOpacity={0} />
-          <Stop offset="1" stopColor={c.haze} stopOpacity={c.hazeOpacity} />
-        </LinearGradient>
-        <LinearGradient id="rcScrim" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.scrim} stopOpacity={c.scrimOpacity} />
-          <Stop offset="0.5" stopColor={c.scrim} stopOpacity={0} />
-        </LinearGradient>
-        <LinearGradient id="rcGlass" x1="0" y1={TOWER_BOX.top} x2="0" y2={TOWER_BOX.foot} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.glass[0]} />
-          <Stop offset="0.5" stopColor={c.glass[1]} />
-          <Stop offset="1" stopColor={c.glass[2]} />
-        </LinearGradient>
-        <LinearGradient id="rcSlab" x1="0" y1={TOWER_BOX.top} x2="0" y2={TOWER_BOX.foot} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.slab[0]} />
-          <Stop offset="1" stopColor={c.slab[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcLight" x1={TOWER_LEFT} y1="0" x2={TOWER_RIGHT} y2="0" gradientUnits="userSpaceOnUse">
-          {FORM.map(({ x, light }, i) => (
-            <Stop key={i} offset={formOffset(x)} stopColor={c.light} stopOpacity={r2(c.lightOpacity * light)} />
-          ))}
-        </LinearGradient>
-        <LinearGradient id="rcShade" x1={TOWER_LEFT} y1="0" x2={TOWER_RIGHT} y2="0" gradientUnits="userSpaceOnUse">
-          {FORM.map(({ x, shade }, i) => (
-            <Stop key={i} offset={formOffset(x)} stopColor={c.turn} stopOpacity={r2(c.turnOpacity * shade)} />
-          ))}
-        </LinearGradient>
-        <LinearGradient id="rcRecess" x1="0" y1={TOWER_BOX.foot} x2="0" y2={PODIUM_TOP} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.recess[0]} />
-          <Stop offset="1" stopColor={c.recess[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcFascia" x1="0" y1={PODIUM_TOP} x2="0" y2={PODIUM_TOP + PODIUM.fascia} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.fascia[0]} />
-          <Stop offset="1" stopColor={c.fascia[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcPodium" x1="0" y1={PODIUM_TOP} x2="0" y2={GROUND} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.podium[0]} />
-          <Stop offset="1" stopColor={c.podium[1]} />
-        </LinearGradient>
-        {/* The podium's form: its rounded left end turning away with a glint just inside, darkening into the wing (149 across). */}
-        <LinearGradient id="rcPodiumForm" x1={PODIUM.x0} y1="0" x2={PODIUM.x0 + 149} y2="0" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.turn} stopOpacity={c.turnOpacity * 0.7} />
-          <Stop offset="0.025" stopColor={c.turn} stopOpacity={0} />
-          <Stop offset="0.045" stopColor={c.light} stopOpacity={c.lightOpacity * 0.5} />
-          <Stop offset="0.14" stopColor={c.light} stopOpacity={0} />
-          <Stop offset="0.6" stopColor={c.light} stopOpacity={0} />
-          <Stop offset="1" stopColor={c.turn} stopOpacity={c.turnOpacity * 0.45} />
-        </LinearGradient>
-        <LinearGradient id="rcLobby" x1="0" y1={CANOPY.y} x2="0" y2={GROUND} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.lobby[0]} />
-          <Stop offset="1" stopColor={c.lobby[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcHall" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.hall[0]} />
-          <Stop offset="1" stopColor={c.hall[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcStore" x1="0" y1={STREET_TOP} x2="0" y2={GROUND} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.storefront[0]} />
-          <Stop offset="1" stopColor={c.storefront[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcTree" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.tree[0]} />
-          <Stop offset="1" stopColor={c.tree[1]} />
-        </LinearGradient>
-        <LinearGradient id="rcTreeBack" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.treeBack[0]} />
-          <Stop offset="1" stopColor={c.treeBack[1]} />
-        </LinearGradient>
-        <RadialGradient id="rcSignGlow" cx={SIGN.x + SIGN.w / 2} cy={SIGN.y + SIGN.h / 2} r="14" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.sign} stopOpacity={c.signGlowOpacity} />
-          <Stop offset="1" stopColor={c.sign} stopOpacity={0} />
-        </RadialGradient>
-        <LinearGradient id="rcRobot" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor={c.robot} />
-          <Stop offset="0.55" stopColor={c.robot} />
-          <Stop offset="1" stopColor={c.robotShade} />
-        </LinearGradient>
-        <RadialGradient id="rcEyeGlow" cx="20" cy="15" r="20" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.eye} stopOpacity={c.eyeGlowOpacity} />
-          <Stop offset="1" stopColor={c.eye} stopOpacity={0} />
-        </RadialGradient>
-        <ClipPath id="rcTowerClip">
-          <Path d={TOWER_OUTLINE} />
-        </ClipPath>
-        <ClipPath id="rcGroundClip">
-          <Rect width={400} height={GROUND} />
-        </ClipPath>
-      </Defs>
-      <Rect width={400} height={300} fill="url(#rcSky)" />
-      <Rect width={400} height={300} fill="url(#rcGlow)" />
-      {night ? (
-        STAR_PATHS.map(({ opacity, d }) => <Path key={opacity} d={d} fill="#FFFFFF" fillOpacity={opacity} />)
-      ) : (
-        <>
-          <Path d={RAYS} fill="#FFFFFF" fillOpacity={0.045} />
-          {CLOUD_PATHS.map(({ opacity, d }, i) => (
-            <Path key={i} d={d} fill="#FFFFFF" fillOpacity={opacity} />
-          ))}
-        </>
-      )}
-      <Rect y={200} width={400} height={100} fill="url(#rcHaze)" />
-      {/* Under the buildings: it only has to darken the sky behind the status bar. */}
-      <Rect width={400} height={300} fill="url(#rcScrim)" />
-
-      {/* Sofic Tower: the glass, the crown, light and streaks, each floor's slab and lip, then the shade as it turns away. */}
-      <Path d={TOWER_OUTLINE} fill="url(#rcGlass)" />
-      <G clipPath="url(#rcTowerClip)">
-        <Path d={CROWN_BAND} fill={c.crown} fillOpacity={c.crownOpacity} />
-        <Rect x={TOWER_LEFT} y={TOWER_BOX.top - 4} width={TOWER_RIGHT - TOWER_LEFT} height={TOWER_BOX.foot - TOWER_BOX.top + 8} fill="url(#rcLight)" />
-        <Path d={DEEPS} fill={c.turn} fillOpacity={c.deepOpacity} />
-        <Path d={STREAKS.join('')} fill="#FFFFFF" fillOpacity={c.streakOpacity} />
-        <Path d={MULLIONS} stroke={c.mullion} strokeOpacity={c.mullionOpacity} strokeWidth={0.4} fill="none" />
-        <Path d={CROWN_GRID} stroke={c.frame} strokeOpacity={c.frameOpacity} strokeWidth={0.35} fill="none" />
-        <Path d={SLABS} fill="url(#rcSlab)" fillOpacity={c.slabOpacity} />
-        <Path d={LIPS} fill={c.lip} fillOpacity={c.lipOpacity} />
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={onLayout}>
+      <Svg viewBox={viewBox} preserveAspectRatio={preserveAspectRatio} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="rcSky" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.sky[0]} />
+            <Stop offset="0.55" stopColor={c.sky[1]} />
+            <Stop offset="1" stopColor={c.sky[2]} />
+          </LinearGradient>
+          <RadialGradient id="rcGlow" cx="372" cy="60" r="240" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.glow} stopOpacity={c.glowOpacity} />
+            <Stop offset="1" stopColor={c.glow} stopOpacity={0} />
+          </RadialGradient>
+          <LinearGradient id="rcHaze" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.haze} stopOpacity={0} />
+            <Stop offset="1" stopColor={c.haze} stopOpacity={c.hazeOpacity} />
+          </LinearGradient>
+          <LinearGradient id="rcScrim" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.scrim} stopOpacity={c.scrimOpacity} />
+            <Stop offset="0.5" stopColor={c.scrim} stopOpacity={0} />
+          </LinearGradient>
+          <LinearGradient id="rcGlass" x1="0" y1={TOWER_BOX.top} x2="0" y2={TOWER_BOX.foot} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.glass[0]} />
+            <Stop offset="0.5" stopColor={c.glass[1]} />
+            <Stop offset="1" stopColor={c.glass[2]} />
+          </LinearGradient>
+          <LinearGradient id="rcSlab" x1="0" y1={TOWER_BOX.top} x2="0" y2={TOWER_BOX.foot} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.slab[0]} />
+            <Stop offset="1" stopColor={c.slab[1]} />
+          </LinearGradient>
+          <LinearGradient id="rcLight" x1={TOWER_LEFT} y1="0" x2={TOWER_RIGHT} y2="0" gradientUnits="userSpaceOnUse">
+            {FORM.map(({ x, light }, i) => (
+              <Stop key={i} offset={formOffset(x)} stopColor={c.light} stopOpacity={r2(c.lightOpacity * light)} />
+            ))}
+          </LinearGradient>
+          <LinearGradient id="rcShade" x1={TOWER_LEFT} y1="0" x2={TOWER_RIGHT} y2="0" gradientUnits="userSpaceOnUse">
+            {FORM.map(({ x, shade }, i) => (
+              <Stop key={i} offset={formOffset(x)} stopColor={c.turn} stopOpacity={r2(c.turnOpacity * shade)} />
+            ))}
+          </LinearGradient>
+          <LinearGradient id="rcRecess" x1="0" y1={TOWER_BOX.foot} x2="0" y2={PODIUM_TOP} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.recess[0]} />
+            <Stop offset="1" stopColor={c.recess[1]} />
+          </LinearGradient>
+          <LinearGradient id="rcFascia" x1="0" y1={PODIUM_TOP} x2="0" y2={PODIUM_TOP + PODIUM.fascia} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.fascia[0]} />
+            <Stop offset="1" stopColor={c.fascia[1]} />
+          </LinearGradient>
+          <LinearGradient id="rcPodium" x1="0" y1={PODIUM_TOP} x2="0" y2={GROUND} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.podium[0]} />
+            <Stop offset="1" stopColor={c.podium[1]} />
+          </LinearGradient>
+          {/* The podium's form: its rounded left end turning away with a glint just inside, darkening into the wing (149 across). */}
+          <LinearGradient id="rcPodiumForm" x1={PODIUM.x0} y1="0" x2={PODIUM.x0 + 149} y2="0" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.turn} stopOpacity={c.turnOpacity * 0.7} />
+            <Stop offset="0.025" stopColor={c.turn} stopOpacity={0} />
+            <Stop offset="0.045" stopColor={c.light} stopOpacity={c.lightOpacity * 0.5} />
+            <Stop offset="0.14" stopColor={c.light} stopOpacity={0} />
+            <Stop offset="0.6" stopColor={c.light} stopOpacity={0} />
+            <Stop offset="1" stopColor={c.turn} stopOpacity={c.turnOpacity * 0.45} />
+          </LinearGradient>
+          <LinearGradient id="rcLobby" x1="0" y1={CANOPY.y} x2="0" y2={GROUND} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.lobby[0]} />
+            <Stop offset="1" stopColor={c.lobby[1]} />
+          </LinearGradient>
+          <LinearGradient id="rcHall" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.hall[0]} />
+            <Stop offset="1" stopColor={c.hall[1]} />
+          </LinearGradient>
+          <LinearGradient id="rcStore" x1="0" y1={STREET_TOP} x2="0" y2={GROUND} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.storefront[0]} />
+            <Stop offset="1" stopColor={c.storefront[1]} />
+          </LinearGradient>
+          <LinearGradient id="rcTree" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.tree[0]} />
+            <Stop offset="1" stopColor={c.tree[1]} />
+          </LinearGradient>
+          <LinearGradient id="rcTreeBack" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.treeBack[0]} />
+            <Stop offset="1" stopColor={c.treeBack[1]} />
+          </LinearGradient>
+          <RadialGradient id="rcSignGlow" cx={SIGN.x + SIGN.w / 2} cy={SIGN.y + SIGN.h / 2} r="14" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.sign} stopOpacity={c.signGlowOpacity} />
+            <Stop offset="1" stopColor={c.sign} stopOpacity={0} />
+          </RadialGradient>
+          <LinearGradient id="rcRobot" x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0" stopColor={c.robot} />
+            <Stop offset="0.55" stopColor={c.robot} />
+            <Stop offset="1" stopColor={c.robotShade} />
+          </LinearGradient>
+          <RadialGradient id="rcEyeGlow" cx="20" cy="15" r="20" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.eye} stopOpacity={c.eyeGlowOpacity} />
+            <Stop offset="1" stopColor={c.eye} stopOpacity={0} />
+          </RadialGradient>
+          <ClipPath id="rcTowerClip">
+            <Path d={TOWER_OUTLINE} />
+          </ClipPath>
+          <ClipPath id="rcGroundClip">
+            <Rect width={400} height={GROUND} />
+          </ClipPath>
+        </Defs>
+        <Rect x={left} width={sceneWidth} height={300} fill="url(#rcSky)" />
+        <Rect x={left} width={sceneWidth} height={300} fill="url(#rcGlow)" />
         {night ? (
+          STAR_PATHS.map(({ opacity, d }) => <Path key={opacity} d={d} fill="#FFFFFF" fillOpacity={opacity} />)
+        ) : (
           <>
-            <Path d={LIT.warm} fill="#FFD27A" fillOpacity={0.7} />
-            <Path d={LIT.cool} fill="#A9D2FA" fillOpacity={0.5} />
+            <Path d={RAYS} fill="#FFFFFF" fillOpacity={0.045} />
+            {CLOUD_PATHS.map(({ opacity, d }, i) => (
+              <Path key={i} d={d} fill="#FFFFFF" fillOpacity={opacity} />
+            ))}
           </>
-        ) : null}
-        <Rect x={TOWER_LEFT} y={TOWER_BOX.top - 4} width={TOWER_RIGHT - TOWER_LEFT} height={TOWER_BOX.foot - TOWER_BOX.top + 8} fill="url(#rcShade)" />
-      </G>
-      <Path d={LEFT_EDGE} stroke={c.edgeLit} strokeOpacity={c.edgeLitOpacity} strokeWidth={0.7} fill="none" />
-      <Path d={ROOF_LINE} stroke={c.rim} strokeOpacity={c.rimOpacity} strokeWidth={1.1} strokeLinecap="round" fill="none" />
+        )}
+        <Rect x={left} y={200} width={sceneWidth} height={100} fill="url(#rcHaze)" />
+        {/* Under the buildings: it only has to darken the sky behind the status bar. */}
+        <Rect x={left} width={sceneWidth} height={300} fill="url(#rcScrim)" />
 
-      {/* The floor of white columns under the glass, the slab's edge above them. */}
-      <Path d={RECESS} fill="url(#rcRecess)" />
-      <Path d={COLUMNS} fill={c.column} />
-      <Path d={COLUMN_SHADES} fill={c.columnShade} />
-      <Path d={FOOT_LINE} stroke={c.soffit} strokeWidth={1.6} strokeLinecap="round" fill="none" />
+        {/* Sofic Tower: the glass, the crown, light and streaks, each floor's slab and lip, then the shade as it turns away. */}
+        <Path d={TOWER_OUTLINE} fill="url(#rcGlass)" />
+        <G clipPath="url(#rcTowerClip)">
+          <Path d={CROWN_BAND} fill={c.crown} fillOpacity={c.crownOpacity} />
+          <Rect x={TOWER_LEFT} y={TOWER_BOX.top - 4} width={TOWER_RIGHT - TOWER_LEFT} height={TOWER_BOX.foot - TOWER_BOX.top + 8} fill="url(#rcLight)" />
+          <Path d={DEEPS} fill={c.turn} fillOpacity={c.deepOpacity} />
+          <Path d={STREAKS.join('')} fill="#FFFFFF" fillOpacity={c.streakOpacity} />
+          <Path d={MULLIONS} stroke={c.mullion} strokeOpacity={c.mullionOpacity} strokeWidth={0.4} fill="none" />
+          <Path d={CROWN_GRID} stroke={c.frame} strokeOpacity={c.frameOpacity} strokeWidth={0.35} fill="none" />
+          <Path d={SLABS} fill="url(#rcSlab)" fillOpacity={c.slabOpacity} />
+          <Path d={LIPS} fill={c.lip} fillOpacity={c.lipOpacity} />
+          {night ? (
+            <>
+              <Path d={LIT.warm} fill="#FFD27A" fillOpacity={0.7} />
+              <Path d={LIT.cool} fill="#A9D2FA" fillOpacity={0.5} />
+            </>
+          ) : null}
+          <Rect x={TOWER_LEFT} y={TOWER_BOX.top - 4} width={TOWER_RIGHT - TOWER_LEFT} height={TOWER_BOX.foot - TOWER_BOX.top + 8} fill="url(#rcShade)" />
+        </G>
+        <Path d={LEFT_EDGE} stroke={c.edgeLit} strokeOpacity={c.edgeLitOpacity} strokeWidth={0.7} fill="none" />
+        <Path d={ROOF_LINE} stroke={c.rim} strokeOpacity={c.rimOpacity} strokeWidth={1.1} strokeLinecap="round" fill="none" />
 
-      {/* Thiskyhall behind the wing, then the tree on the podium's roof. */}
-      <Path d={HALL_BODY} fill="url(#rcHall)" />
-      <Path d={HALL_STRIPES} fill={c.hallStripe} fillOpacity={c.hallStripeOpacity} />
-      <Path d={ROOF_TREES.back} fill="url(#rcTreeBack)" />
-      <Path d={ROOF_TREES.front} fill="url(#rcTree)" />
-      <Path d={ROOF_TREES.light} fill={c.treeLight} fillOpacity={c.treeLightOpacity} />
+        {/* The floor of white columns under the glass, the slab's edge above them. */}
+        <Path d={RECESS} fill="url(#rcRecess)" />
+        <Path d={COLUMNS} fill={c.column} />
+        <Path d={COLUMN_SHADES} fill={c.columnShade} />
+        <Path d={FOOT_LINE} stroke={c.soffit} strokeWidth={1.6} strokeLinecap="round" fill="none" />
 
-      {/* The podium: the wing of glass fins on the right, then the block with its fascia, panes and banner. */}
-      <Path d={WING_BODY} fill="url(#rcPodium)" />
-      <Path d={WING_FINS} fill={c.podiumMullion} fillOpacity={c.podiumMullionOpacity * 1.4} />
-      <Path d={WING_EDGE} fill={c.podiumEdge} fillOpacity={c.podiumEdgeOpacity * 0.6} />
-      <Path d={PODIUM_BODY} fill="url(#rcPodium)" />
-      <Path d={PANES} fill={c.pane} fillOpacity={c.paneOpacity} />
-      <Path d={PANES} fill={c.lit} fillOpacity={c.litOpacity * 0.5} />
-      <Path d={PODIUM_MULLIONS} fill={c.podiumMullion} fillOpacity={c.podiumMullionOpacity} />
-      <Path d={FASCIA} fill="url(#rcFascia)" />
-      <Path d={PODIUM_EDGE} fill={c.podiumEdge} fillOpacity={c.podiumEdgeOpacity} />
-      <Rect x={BANNER.x} y={BANNER.y} width={BANNER.w} height={BANNER.h} fill={c.banner} />
-      <Path d={BANNER_TAIL} fill={c.podium[0]} />
-      <Path d={BANNER_INK} fill={c.bannerInk} fillOpacity={0.55} />
+        {/* Thiskyhall behind the wing, then the tree on the podium's roof. */}
+        <Path d={HALL_BODY} fill="url(#rcHall)" />
+        <Path d={HALL_STRIPES} fill={c.hallStripe} fillOpacity={c.hallStripeOpacity} />
+        <Path d={ROOF_TREES.back} fill="url(#rcTreeBack)" />
+        <Path d={ROOF_TREES.front} fill="url(#rcTree)" />
+        <Path d={ROOF_TREES.light} fill={c.treeLight} fillOpacity={c.treeLightOpacity} />
 
-      {/* Street level, ending above the week band: the shops and the lobby under the canopy. */}
-      <G clipPath="url(#rcGroundClip)">
-        <Path d={STOREFRONT} fill="url(#rcStore)" />
-        <Path d={STORE_MULLIONS} fill={c.podiumMullion} fillOpacity={c.podiumMullionOpacity} />
-        <Path d={STORE_AWNING} fill={c.podiumEdge} fillOpacity={c.podiumEdgeOpacity * 0.5} />
-        <Path d={LOBBY} fill="url(#rcLobby)" />
-        <Path d={LOBBY_FRAMES} fill={c.canopy} fillOpacity={0.35} />
-        <Path d={GROUND_LIT} fill={c.lit} fillOpacity={c.litOpacity} />
-        <Path d={PODIUM_BODY} fill="url(#rcPodiumForm)" />
-        <Path d={CANOPY_POSTS} fill={c.canopy} />
-        <Path d={CANOPY_SHADE} fill={c.canopyShade} />
-        <Path d={CANOPY_BODY} fill={c.canopy} />
-        <Rect x={SIGN.x - 14} y={SIGN.y - 12} width={SIGN.w + 28} height={SIGN.h + 24} fill="url(#rcSignGlow)" />
-        <Rect x={SIGN.x} y={SIGN.y} width={SIGN.w} height={SIGN.h} rx={0.5} fill={c.sign} />
-      </G>
+        {/* The podium: the wing of glass fins on the right, then the block with its fascia, panes and banner. */}
+        <Path d={WING_BODY} fill="url(#rcPodium)" />
+        <Path d={WING_FINS} fill={c.podiumMullion} fillOpacity={c.podiumMullionOpacity * 1.4} />
+        <Path d={WING_EDGE} fill={c.podiumEdge} fillOpacity={c.podiumEdgeOpacity * 0.6} />
+        <Path d={PODIUM_BODY} fill="url(#rcPodium)" />
+        <Path d={PANES} fill={c.pane} fillOpacity={c.paneOpacity} />
+        <Path d={PANES} fill={c.lit} fillOpacity={c.litOpacity * 0.5} />
+        <Path d={PODIUM_MULLIONS} fill={c.podiumMullion} fillOpacity={c.podiumMullionOpacity} />
+        <Path d={FASCIA} fill="url(#rcFascia)" />
+        <Path d={PODIUM_EDGE} fill={c.podiumEdge} fillOpacity={c.podiumEdgeOpacity} />
+        <Rect x={BANNER.x} y={BANNER.y} width={BANNER.w} height={BANNER.h} fill={c.banner} />
+        <Path d={BANNER_TAIL} fill={c.podium[0]} />
+        <Path d={BANNER_INK} fill={c.bannerInk} fillOpacity={0.55} />
 
-      {/* The robot, white on the blue, its eyes glowing at night. */}
-      <G transform={ROBOT_TRANSFORM}>
-        <Rect x={-6} y={-6} width={52} height={42} fill="url(#rcEyeGlow)" />
-        <Path d={`M11 28L4.5 35.5M29 28L35.5 35.5`} stroke={c.robotShade} strokeWidth={5.5} strokeLinecap="round" fill="none" />
-        <Path d={`M11 28L4.5 35.5`} stroke={c.robot} strokeWidth={4} strokeLinecap="round" fill="none" />
-        <Path d={ROBOT_FEET} fill={c.robotShade} />
-        <Path d={ROBOT_BODY} fill="url(#rcRobot)" />
-        <Path d={disc(20, 31.5, 3.3)} fill={c.emblem} />
-        <Path d={disc(20, 31.5, 1.9)} fill={c.emblemInner} />
-        <Path d={ROBOT_EARS} fill={c.robotShade} />
-        <Path d={ROBOT_FINS} fill={c.robot} />
-        <Rect x={1} y={4} width={38} height={21.5} rx={10.5} fill="url(#rcRobot)" />
-        <Rect x={5} y={8.5} width={30} height={13} rx={6.5} fill={c.visor} />
-        <Path d={ROBOT_EYES} fill={c.eye} />
-        <Path d={ROBOT_PUPILS} fill={c.eyeDeep} />
-        <Path d={ROBOT_GLINTS} fill="#FFFFFF" />
-      </G>
-    </Svg>
+        {/* Street level, ending above the week band: the shops and the lobby under the canopy. */}
+        <G clipPath="url(#rcGroundClip)">
+          <Path d={STOREFRONT} fill="url(#rcStore)" />
+          <Path d={STORE_MULLIONS} fill={c.podiumMullion} fillOpacity={c.podiumMullionOpacity} />
+          <Path d={STORE_AWNING} fill={c.podiumEdge} fillOpacity={c.podiumEdgeOpacity * 0.5} />
+          <Path d={LOBBY} fill="url(#rcLobby)" />
+          <Path d={LOBBY_FRAMES} fill={c.canopy} fillOpacity={0.35} />
+          <Path d={GROUND_LIT} fill={c.lit} fillOpacity={c.litOpacity} />
+          <Path d={PODIUM_BODY} fill="url(#rcPodiumForm)" />
+          <Path d={CANOPY_POSTS} fill={c.canopy} />
+          <Path d={CANOPY_SHADE} fill={c.canopyShade} />
+          <Path d={CANOPY_BODY} fill={c.canopy} />
+          <Rect x={SIGN.x - 14} y={SIGN.y - 12} width={SIGN.w + 28} height={SIGN.h + 24} fill="url(#rcSignGlow)" />
+          <Rect x={SIGN.x} y={SIGN.y} width={SIGN.w} height={SIGN.h} rx={0.5} fill={c.sign} />
+        </G>
+
+        {/* The robot, white on the blue, its eyes glowing at night. */}
+        <G transform={ROBOT_TRANSFORM}>
+          <Rect x={-6} y={-6} width={52} height={42} fill="url(#rcEyeGlow)" />
+          <Path d={`M11 28L4.5 35.5M29 28L35.5 35.5`} stroke={c.robotShade} strokeWidth={5.5} strokeLinecap="round" fill="none" />
+          <Path d={`M11 28L4.5 35.5`} stroke={c.robot} strokeWidth={4} strokeLinecap="round" fill="none" />
+          <Path d={ROBOT_FEET} fill={c.robotShade} />
+          <Path d={ROBOT_BODY} fill="url(#rcRobot)" />
+          <Path d={disc(20, 31.5, 3.3)} fill={c.emblem} />
+          <Path d={disc(20, 31.5, 1.9)} fill={c.emblemInner} />
+          <Path d={ROBOT_EARS} fill={c.robotShade} />
+          <Path d={ROBOT_FINS} fill={c.robot} />
+          <Rect x={1} y={4} width={38} height={21.5} rx={10.5} fill="url(#rcRobot)" />
+          <Rect x={5} y={8.5} width={30} height={13} rx={6.5} fill={c.visor} />
+          <Path d={ROBOT_EYES} fill={c.eye} />
+          <Path d={ROBOT_PUPILS} fill={c.eyeDeep} />
+          <Path d={ROBOT_GLINTS} fill="#FFFFFF" />
+        </G>
+      </Svg>
+    </View>
   );
 });

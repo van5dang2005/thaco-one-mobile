@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
-import { StyleSheet } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { useState, type ReactNode } from 'react';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Svg, { Defs, G as Group, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
 
@@ -10,8 +10,28 @@ import { useTheme } from '@/core/theme/ThemeProvider';
  * so a scene keeps its subject on the right, x ≥ 200, under the toolbar. Under the ground the hazy skyline runs on
  * and fades into the canvas by the bottom edge, behind the cards that overlap the header (`ModuleScreen` `overlap`),
  * so the picture has no line or edge at its foot, beside the cards or when they are pulled down.
+ * On a wide header (`useSceneFrame`) the sky and the skyline (repeated) run on to the left.
  */
 export const SCENE = { width: 400, height: 238, ground: 214 } as const;
+
+/** The largest scale a header picture gets from its width: a 440pt phone's. */
+const MAX_WIDTH_SCALE = 1.1;
+
+/**
+ * Where a header picture's scene (`width` × `height` units) shows in its header: `xMidYMax slice` on a phone, but a
+ * foldable's inner screen or a tablet would scale it by width and blow the subject up past the toolbar, so there the
+ * scale stops at a big phone's (or fits the height when that is more), the scene keeps its right edge and the extra
+ * width opens to the left (`left` < 0). Backdrops span `left`…`left + width`.
+ */
+export function useSceneFrame(width: number, height: number) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const onLayout = ({ nativeEvent: { layout } }: LayoutChangeEvent) => setSize({ width: layout.width, height: layout.height });
+  if (!size.width || !size.height) return { onLayout, viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'xMidYMax slice', left: 0, width };
+  const scale = Math.max(size.height / height, Math.min(size.width / width, MAX_WIDTH_SCALE));
+  const [w, h] = [size.width / scale, size.height / scale];
+  const left = w <= width ? (width - w) / 2 : width - w;
+  return { onLayout, viewBox: `${r2(left)} ${r2(height - h)} ${r2(w)} ${r2(h)}`, preserveAspectRatio: 'xMaxYMax meet', left: r2(left), width: r2(w) };
+}
 
 // ---- path helpers: a few <Path>s instead of many <Rect>s --------------------------------------
 
@@ -96,62 +116,72 @@ export function HeaderScene({ id, clouds, stars, children, fadeTo }: Props) {
   const c = palettes[scheme];
   const night = scheme === 'dark';
   const { width: W, height: H, ground: G } = SCENE;
+  const { onLayout, viewBox, preserveAspectRatio, left, width: sceneWidth } = useSceneFrame(W, H);
+  // The skyline again for every 400 units the sky runs on to the left.
+  const farCopies = Array.from({ length: Math.max(0, Math.ceil(-left / W)) }, (_, i) => -(i + 1) * W);
   return (
     // Sized by absoluteFill alone: percentage sizes on an absolute child resolve against the header's padded content box.
-    <Svg pointerEvents="none" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" style={StyleSheet.absoluteFill}>
-      <Defs>
-        <LinearGradient id={`${id}Sky`} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.sky[0]} />
-          <Stop offset="0.55" stopColor={c.sky[1]} />
-          <Stop offset="1" stopColor={c.sky[2]} />
-        </LinearGradient>
-        <RadialGradient id={`${id}Glow`} cx="372" cy="50" r="230" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.glow} stopOpacity={c.glowOpacity} />
-          <Stop offset="1" stopColor={c.glow} stopOpacity={0} />
-        </RadialGradient>
-        {/* Haze thickening down to the ground, then even under it. */}
-        <LinearGradient id={`${id}Haze`} x1="0" y1={G - 80} x2="0" y2={H} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={c.haze} stopOpacity={0} />
-          <Stop offset={80 / (H - G + 80)} stopColor={c.haze} stopOpacity={c.hazeOpacity} />
-          <Stop offset="1" stopColor={c.haze} stopOpacity={c.hazeOpacity} />
-        </LinearGradient>
-        {/* From the ground the picture eases into the canvas, reaching it at the bottom edge. */}
-        <LinearGradient id={`${id}Fade`} x1="0" y1={G} x2="0" y2={H} gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor={fadeTo ?? colors.canvas} stopOpacity={0} />
-          <Stop offset="1" stopColor={fadeTo ?? colors.canvas} />
-        </LinearGradient>
-        <LinearGradient id={`${id}Scrim`} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.scrim} stopOpacity={c.scrimOpacity} />
-          <Stop offset="0.45" stopColor={c.scrim} stopOpacity={0} />
-        </LinearGradient>
-      </Defs>
-      <Rect width={W} height={H} fill={`url(#${id}Sky)`} />
-      <Rect width={W} height={H} fill={`url(#${id}Glow)`} />
-      {night ? (
-        stars.map((points, i) => <Path key={i} d={points.map(([x, y, r]) => disc(x, y, r)).join('')} fill="#FFFFFF" fillOpacity={[0.8, 0.55, 0.4][i] ?? 0.4} />)
-      ) : (
-        <>
-          <Path d={RAYS} fill="#FFFFFF" fillOpacity={0.045} />
-          {clouds.map(([x, y, s, opacity], i) => (
-            <Path
-              key={i}
-              d={pill(x - 24 * s, y, 48 * s, 8 * s) + disc(x - 10 * s, y + s, 7.5 * s) + disc(x + 3 * s, y - 2 * s, 10 * s) + disc(x + 15 * s, y + 2 * s, 6.5 * s)}
-              fill="#FFFFFF"
-              fillOpacity={opacity}
-            />
-          ))}
-        </>
-      )}
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={onLayout}>
+      <Svg viewBox={viewBox} preserveAspectRatio={preserveAspectRatio} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id={`${id}Sky`} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.sky[0]} />
+            <Stop offset="0.55" stopColor={c.sky[1]} />
+            <Stop offset="1" stopColor={c.sky[2]} />
+          </LinearGradient>
+          <RadialGradient id={`${id}Glow`} cx="372" cy="50" r="230" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.glow} stopOpacity={c.glowOpacity} />
+            <Stop offset="1" stopColor={c.glow} stopOpacity={0} />
+          </RadialGradient>
+          {/* Haze thickening down to the ground, then even under it. */}
+          <LinearGradient id={`${id}Haze`} x1="0" y1={G - 80} x2="0" y2={H} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={c.haze} stopOpacity={0} />
+            <Stop offset={80 / (H - G + 80)} stopColor={c.haze} stopOpacity={c.hazeOpacity} />
+            <Stop offset="1" stopColor={c.haze} stopOpacity={c.hazeOpacity} />
+          </LinearGradient>
+          {/* From the ground the picture eases into the canvas, reaching it at the bottom edge. */}
+          <LinearGradient id={`${id}Fade`} x1="0" y1={G} x2="0" y2={H} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={fadeTo ?? colors.canvas} stopOpacity={0} />
+            <Stop offset="1" stopColor={fadeTo ?? colors.canvas} />
+          </LinearGradient>
+          <LinearGradient id={`${id}Scrim`} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.scrim} stopOpacity={c.scrimOpacity} />
+            <Stop offset="0.45" stopColor={c.scrim} stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <Rect x={left} width={sceneWidth} height={H} fill={`url(#${id}Sky)`} />
+        <Rect x={left} width={sceneWidth} height={H} fill={`url(#${id}Glow)`} />
+        {night ? (
+          stars.map((points, i) => <Path key={i} d={points.map(([x, y, r]) => disc(x, y, r)).join('')} fill="#FFFFFF" fillOpacity={[0.8, 0.55, 0.4][i] ?? 0.4} />)
+        ) : (
+          <>
+            <Path d={RAYS} fill="#FFFFFF" fillOpacity={0.045} />
+            {clouds.map(([x, y, s, opacity], i) => (
+              <Path
+                key={i}
+                d={pill(x - 24 * s, y, 48 * s, 8 * s) + disc(x - 10 * s, y + s, 7.5 * s) + disc(x + 3 * s, y - 2 * s, 10 * s) + disc(x + 15 * s, y + 2 * s, 6.5 * s)}
+                fill="#FFFFFF"
+                fillOpacity={opacity}
+              />
+            ))}
+          </>
+        )}
 
-      <Path d={FAR_PATH} fill={c.far} />
-      {night ? <Path d={FAR_LIT} fill="#FFD27A" fillOpacity={0.5} /> : null}
-      <Rect y={G - 80} width={W} height={H - G + 80} fill={`url(#${id}Haze)`} />
+        <Path d={FAR_PATH} fill={c.far} />
+        {farCopies.map((x) => (
+          <Group key={x} transform={`translate(${x} 0)`}>
+            <Path d={FAR_PATH} fill={c.far} />
+          </Group>
+        ))}
+        {night ? <Path d={FAR_LIT} fill="#FFD27A" fillOpacity={0.5} /> : null}
+        <Rect x={left} y={G - 80} width={sceneWidth} height={H - G + 80} fill={`url(#${id}Haze)`} />
 
-      {children(night)}
+        {children(night)}
 
-      <Rect y={G} width={W} height={H - G} fill={`url(#${id}Fade)`} />
+        <Rect x={left} y={G} width={sceneWidth} height={H - G} fill={`url(#${id}Fade)`} />
 
-      <Rect width={W} height={H} fill={`url(#${id}Scrim)`} />
-    </Svg>
+        <Rect x={left} width={sceneWidth} height={H} fill={`url(#${id}Scrim)`} />
+      </Svg>
+    </View>
   );
 }
