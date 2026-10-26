@@ -1,5 +1,5 @@
 import { type GuestScheduleDto, SecurityCheckInStatus } from '../../types';
-import { checkOutBlocker, gateModeOf, isOfficeHours, qrLinkOf, toVisit, visitPhase } from '../visit';
+import { checkOutBlocker, gateModeOf, isOfficeHours, qrLinkOf, receptionTally, toVisit, visitPhase } from '../visit';
 
 const CODE = '0807954103354f829a1375e0e0cb138e';
 const LINK = `https://uatapi01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}`;
@@ -54,7 +54,10 @@ describe('toVisit', () => {
       fromDate: '2026-10-20T00:00:00Z',
       toDate: '2026-10-23T00:00:00Z',
       location: 'Công ty A, Công ty B',
-      members: ['Khách 1', 'Khách 2'],
+      members: [
+        { id: 'm-1', name: 'Khách 1', position: null, identityNumber: null, extra: false, absent: false, receptionIn: null, receptionOut: null },
+        { id: 'm-2', name: 'Khách 2', position: null, identityNumber: null, extra: false, absent: false, receptionIn: null, receptionOut: null },
+      ],
       status: 'pending',
       canCheckOut: false,
       checkIn: null,
@@ -100,9 +103,68 @@ describe('toVisit', () => {
     expect(visit).toMatchObject({ groupName: 'AUTO1020260003', guestCount: 2, toDate: '2026-10-20T00:00:00Z', location: null });
   });
 
+  it('reads each guest and when reception checked them in and out', () => {
+    const visit = toVisit(
+      {
+        ...dto,
+        members: [
+          {
+            memberId: 'm-1',
+            fullName: ' Trần Văn B ',
+            position: 'Kỹ sư',
+            identityNumber: '001',
+            phone: '091',
+            isExtra: true,
+            isAbsent: false,
+            checkIn: { id: 'r-1', type: 1, time: '2026-10-23T01:40:00Z', note: null },
+            checkOut: { id: 'r-2', type: 2, time: '2026-10-23T09:05:00Z', note: null },
+          },
+          { memberId: 'm-2', fullName: 'Khách 2', position: ' ', isAbsent: true, checkIn: null, checkOut: null },
+        ],
+      },
+      LINK,
+    );
+    expect(visit?.members).toEqual([
+      { id: 'm-1', name: 'Trần Văn B', position: 'Kỹ sư', identityNumber: '001', extra: true, absent: false, receptionIn: '2026-10-23T01:40:00Z', receptionOut: '2026-10-23T09:05:00Z' },
+      { id: 'm-2', name: 'Khách 2', position: null, identityNumber: null, extra: false, absent: true, receptionIn: null, receptionOut: null },
+    ]);
+  });
+
   it('finds no visit in an empty answer', () => {
     expect(toVisit(null, LINK)).toBeNull();
     expect(toVisit({ guestScheduleId: '' }, LINK)).toBeNull();
+  });
+});
+
+describe('receptionTally', () => {
+  const guest = (id: string, more: { absent?: boolean; receptionIn?: string; receptionOut?: string } = {}) => ({
+    id,
+    name: id,
+    position: null,
+    identityNumber: null,
+    extra: false,
+    absent: more.absent ?? false,
+    receptionIn: more.receptionIn ?? null,
+    receptionOut: more.receptionOut ?? null,
+  });
+  const IN = '2026-10-23T01:40:00Z';
+  const OUT = '2026-10-23T09:05:00Z';
+
+  it('is done once every guest but the absent is checked out', () => {
+    expect(receptionTally([guest('a', { receptionIn: IN, receptionOut: OUT }), guest('b', { absent: true })])).toEqual({ expected: 1, checkedIn: 1, checkedOut: 1, done: true });
+  });
+
+  it('waits on a guest still inside or never checked in', () => {
+    expect(receptionTally([guest('a', { receptionIn: IN, receptionOut: OUT }), guest('b', { receptionIn: IN }), guest('c')])).toEqual({ expected: 3, checkedIn: 2, checkedOut: 1, done: false });
+  });
+
+  it('counts a check-out alone as in and out (after hours the server writes both)', () => {
+    expect(receptionTally([guest('a', { receptionOut: OUT })])).toEqual({ expected: 1, checkedIn: 1, checkedOut: 1, done: true });
+  });
+
+  it('is never done without a guest to expect', () => {
+    expect(receptionTally([]).done).toBe(false);
+    expect(receptionTally([guest('a', { absent: true })]).done).toBe(false);
   });
 });
 

@@ -1,9 +1,8 @@
 import { useWindowDimensions, View } from 'react-native';
-import Svg, { Defs, G, Image as SvgImage, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
-import { images, WORDMARK_RATIO } from '@/shared/assets';
-import { box, disc, steps } from '@/shared/ui/HeaderScene';
+import { box, disc, hash, steps } from '@/shared/ui/HeaderScene';
 
 import { guestPageColors } from './GuestPage';
 
@@ -19,57 +18,93 @@ const SKY_ABOVE = 1200;
 const TOOLBAR = 24;
 
 /**
- * A blue sky lightening to the horizon, with a glow rising behind the gate. Behind the gate stands the headquarters:
- * `frame` and `wing` are white veils over the sky, its `glass` a deeper blue. The
- * near plane is cut out in the page's grey (`land`), with `pane` glass in it.
+ * A blue sky lightening to the horizon, with a glow rising behind the gate. Behind the gate stands the headquarters
+ * (`hq`): glass shading down its `front` and, darker, its receding `side`, white `line`s for floors and mullions, a
+ * white `cap` on the roofs. The near plane is cut out in the page's grey (`land`), with
+ * `pane` glass in it.
  */
 const palettes = {
   light: {
     sky: ['#003E80', '#0A5BAF', '#4793DA'],
     glow: { color: '#FFFFFF', opacity: 0.3 },
-    frame: 0.34,
-    wing: 0.26,
-    glass: { color: '#0A4E98', opacity: 0.42 },
     land: guestPageColors.light,
     pane: '#D2DBE6',
-    sign: '#00539B',
     stripe: '#E5484D',
     lit: '#FFE3A3',
     cloud: 0.14,
+    hq: { front: ['#9CC6EE', '#4583CB'], side: ['#5E95D2', '#2E68AF'], line: 0.32, cap: '#F4F8FD' },
   },
   dark: {
     sky: ['#071224', '#0D2342', '#1D4270'],
     glow: { color: '#8FBFFF', opacity: 0.18 },
-    frame: 0.13,
-    wing: 0.09,
-    glass: { color: '#050C18', opacity: 0.5 },
     land: guestPageColors.dark,
     pane: '#16283F',
-    sign: '#1C4F86',
     stripe: '#E2574C',
     lit: '#F2C46E',
     cloud: 0,
+    hq: { front: ['#2E5584', '#15304F'], side: ['#1E3D63', '#0F223D'], line: 0.13, cap: '#4E6E96' },
   },
 };
 
 // ---- behind the gate: the THACO headquarters ----------------------------------------------------
 
-/** The tower: a solid crown carrying the THACO sign under a roof cap, then a curtain wall of glass in white mullions. */
-const TOWER = { x: 222, y: 68, w: 100, crown: 24 };
-const SIGN = { x: TOWER.x + 8, y: TOWER.y + 5, w: TOWER.w - 16, h: 15 };
-const LOGO_H = 9.5;
-const LOGO_W = LOGO_H * WORDMARK_RATIO;
-/** The lower wing on the tower's right, with ribbon windows. */
-const WING = { x: TOWER.x + TOWER.w, y: 132, w: 56 };
-const HQ_FRAME = box(TOWER.x - 2, TOWER.y - 3, TOWER.w + 4, 3) + box(TOWER.x, TOWER.y, TOWER.w, GROUND - TOWER.y);
-/** Curtain-wall panes, `[x, y]`: a row per floor under the crown. */
-const towerPanes = steps(TOWER.y + TOWER.crown + 4, GROUND - 6, 11).flatMap((y) => steps(TOWER.x + 6, TOWER.x + TOWER.w - 6, 10).map((x) => [x, y] as const));
-const HQ_GLASS =
-  towerPanes.map(([x, y]) => box(x, y, 8, 8.5)).join('') + steps(WING.y + 8, GROUND - 6, 12).map((y) => box(WING.x + 4, y, WING.w - 8, 5)).join('');
-const HQ_LIT = towerPanes
-  .filter((_, i) => i % 7 === 3 || i % 11 === 5)
-  .map(([x, y]) => box(x, y, 8, 8.5))
+const pts = (...p: [number, number][]) => `M${p.map(([x, y]) => `${x} ${y}`).join('L')}Z`;
+
+/**
+ * The tower, a glass block seen a little from the left: its front face, its side face receding to the right (the roof
+ * line falling `fall` over it), a gridded glass crown `crown` deep under a white cap, then a floor line every 6.5 and a
+ * mullion every 10. The THACO wordmark is not on it but at the right end of the toolbar's title line (`GuestTopBar`).
+ */
+const TOWER = { x: 230, w: 70, side: 22, top: 70, fall: 6, crown: 11 };
+const T_RIGHT = TOWER.x + TOWER.w;
+const T_SIDE = pts([T_RIGHT, TOWER.top], [T_RIGHT + TOWER.side, TOWER.top + TOWER.fall], [T_RIGHT + TOWER.side, GROUND], [T_RIGHT, GROUND]);
+const T_CAP =
+  box(TOWER.x - 1, TOWER.top - 3, TOWER.w + 2, 3) +
+  pts([T_RIGHT + 1, TOWER.top - 3], [T_RIGHT + TOWER.side + 1, TOWER.top + TOWER.fall - 3], [T_RIGHT + TOWER.side + 1, TOWER.top + TOWER.fall], [T_RIGHT + 1, TOWER.top]);
+/** How far a side face `depth` deep falls at height `y`, receding as the tower's does: its roof's fall at the top, none at the eye (the ground). */
+const fallOver = (depth: number, y: number) => (depth * TOWER.fall * (GROUND - y)) / (TOWER.side * (GROUND - TOWER.top));
+/** A band `h` thick at height `y` across a side face from `x`, `depth` deep, falling with it. */
+const sideBand = (x: number, depth: number, y: number, h: number) =>
+  pts([x, y], [x + depth, y + fallOver(depth, y)], [x + depth, y + fallOver(depth, y) + h], [x, y + h]);
+const T_FLOORS = steps(TOWER.top + TOWER.crown + 4, GROUND - 2, 6.5);
+const T_LINES =
+  T_FLOORS.map((y) => box(TOWER.x, y, TOWER.w, 0.8) + sideBand(T_RIGHT, TOWER.side, y, 0.7)).join('') +
+  box(TOWER.x, TOWER.top + TOWER.crown, TOWER.w, 1.4) +
+  sideBand(T_RIGHT, TOWER.side, TOWER.top + TOWER.crown, 1.2);
+const T_MULLIONS = steps(TOWER.x + 10, T_RIGHT - 2, 10)
+  .map((x) => box(x, TOWER.top + TOWER.crown, 0.7, GROUND - TOWER.top - TOWER.crown))
   .join('');
+const T_LATTICE = steps(TOWER.x + 3.5, T_RIGHT - 1, 3.5)
+  .map((x) => box(x, TOWER.top + 1, 0.5, TOWER.crown - 2))
+  .join('');
+/** The lit corner between the two faces. */
+const T_EDGE = box(T_RIGHT - 0.8, TOWER.top, 1.6, GROUND - TOWER.top);
+/** Windows lit at night, the same scatter on every render. */
+const T_LIT = T_FLOORS.flatMap((y, f) =>
+  steps(TOWER.x, T_RIGHT - 2, 10)
+    .filter((_, i) => hash(f, i, 3) % 7 === 1)
+    .map((x) => box(x + 1, y + 1.2, 8.3, 4.6)),
+).join('');
+/**
+ * The low wing beyond the tower's side face: a glass front whose right end turns round like a drum, falling away as it
+ * turns (as the tower's side face recedes), banded with ribbon windows between white slabs under a white cap.
+ */
+const WING = { x: T_RIGHT + TOWER.side, w: 36, r: 20, top: 126, pitch: 6.5 };
+const W_END = WING.x + WING.w;
+/** The curve round the drum at height `y`, from the front's end to the far side, falling `f`. */
+const drumCurve = (y: number, f: number) => `Q${W_END + WING.r * 0.7} ${y + f * 0.15} ${W_END + WING.r} ${y + f}`;
+const drumFall = (y: number) => fallOver(WING.r, y) * 1.25;
+/** A band `h` thick at height `y` round the drum, falling as it turns away. */
+const drumBand = (y: number, h: number) =>
+  `M${W_END} ${y}${drumCurve(y, drumFall(y))}V${y + drumFall(y) + h}Q${W_END + WING.r * 0.7} ${y + drumFall(y) * 0.15 + h} ${W_END} ${y + h}Z`;
+const W_DRUM = `M${W_END} ${WING.top}${drumCurve(WING.top, drumFall(WING.top))}V${GROUND}H${W_END}Z`;
+const W_FLOORS = steps(WING.top + WING.pitch, GROUND - 1, WING.pitch);
+const W_SLABS = W_FLOORS.map((y) => box(WING.x, y, WING.w, 2) + drumBand(y, 1.8)).join('');
+const W_CAP = box(WING.x - 0.5, WING.top - 2.5, WING.w + 0.5, 2.5) + drumBand(WING.top - 2.5, 2.5);
+/** Ribbons lit at night, the same scatter on every render. */
+const W_LIT = W_FLOORS.flatMap((y, f) =>
+  [WING.x + 2, WING.x + 19].filter((_, i) => hash(f, i, 11) % 3 === 0).map((x) => box(x, y + 2.4, 15, 3.6)),
+).join('');
 
 // ---- the near plane: the gate, the guard booth and the fence either side --------------------------
 
@@ -168,10 +203,48 @@ const FINIALS = finialPillars.map((p) => disc(p + FENCE.pillarW / 2, FENCE.pilla
 const PILLAR_PANELS = fencePillars.map((p) => box(p + 2, FENCE.pillarTop + 3, FENCE.pillarW - 4, 8)).join('');
 
 const STARS: [number, number, number][] = [[300, 30, 1], [340, 52, 0.8], [372, 22, 1.1], [268, 76, 0.8], [24, 96, 0.9], [84, 84, 0.8], [126, 94, 0.7], [362, 100, 0.8]];
-/** Day clouds, `[x, y, scale]`, kept off the title. */
-const CLOUDS: [number, number, number][] = [[318, 40, 1]];
+/** Day clouds, `[x, y, scale]`, kept off the toolbar (its title, and the wordmark at its right end): right of the tower, over the wing. */
+const CLOUDS: [number, number, number][] = [[352, 98, 0.85]];
 const cloud = ([x, y, s]: [number, number, number]) =>
   box(x - 22 * s, y, 44 * s, 8 * s) + disc(x - 10 * s, y + s, 7.5 * s) + disc(x + 3 * s, y - 2 * s, 10 * s) + disc(x + 15 * s, y + 2 * s, 6.5 * s);
+
+type Palette = (typeof palettes)['light'];
+
+/** The headquarters behind the gate: the wing, its drum shaded round, then the tower's two faces of glass; lit windows at night, lines and caps. */
+function Headquarters({ c, night }: { c: Palette; night: boolean }) {
+  const { hq } = c;
+  const shade = (id: string, [top, bottom]: string[], y1: number) => (
+    <LinearGradient id={id} gradientUnits="userSpaceOnUse" x1={0} y1={y1} x2={0} y2={GROUND}>
+      <Stop offset="0" stopColor={top} />
+      <Stop offset="1" stopColor={bottom} />
+    </LinearGradient>
+  );
+  return (
+    <G>
+      <Defs>
+        {shade('hqFront', hq.front, TOWER.top)}
+        {shade('hqSide', hq.side, TOWER.top)}
+        <LinearGradient id="hqDrum" gradientUnits="userSpaceOnUse" x1={W_END} y1={0} x2={W_END + WING.r} y2={0}>
+          <Stop offset="0" stopColor={hq.front[1]} />
+          <Stop offset="0.35" stopColor={hq.front[0]} stopOpacity={0.9} />
+          <Stop offset="1" stopColor={hq.side[1]} />
+        </LinearGradient>
+      </Defs>
+      <Path d={box(WING.x, WING.top, WING.w, GROUND - WING.top)} fill="url(#hqFront)" />
+      <Path d={W_DRUM} fill="url(#hqDrum)" />
+      {night ? <Path d={W_LIT} fill={c.lit} fillOpacity={0.6} /> : null}
+      <Path d={W_SLABS} fill="#FFFFFF" fillOpacity={night ? 0.14 : 0.45} />
+      <Path d={W_CAP} fill={hq.cap} />
+      <Path d={box(TOWER.x, TOWER.top, TOWER.w, GROUND - TOWER.top)} fill="url(#hqFront)" />
+      <Path d={T_SIDE} fill="url(#hqSide)" />
+      {night ? <Path d={T_LIT} fill={c.lit} fillOpacity={0.6} /> : null}
+      <Path d={T_LATTICE + T_MULLIONS} fill="#FFFFFF" fillOpacity={hq.line} />
+      <Path d={T_LINES} fill="#FFFFFF" fillOpacity={hq.line + 0.1} />
+      <Path d={T_EDGE} fill="#FFFFFF" fillOpacity={night ? 0.3 : 0.7} />
+      <Path d={T_CAP} fill={hq.cap} />
+    </G>
+  );
+}
 
 /** How far below the ground line a header that stops under the gate cuts the picture. */
 const GATE_CUT = 8;
@@ -189,8 +262,9 @@ export function useGuestScene() {
 
 /**
  * The guest screens' header picture, drawn behind their title (white on it) and counters: the plant's main gate at the
- * horizon of a blue sky, lit by a glow rising behind it. Behind the gate, veiled, stands the headquarters: a tower with
- * the THACO sign on its crown over a curtain wall of blue glass, and a lower wing. In front, in the
+ * horizon of a blue sky, lit by a glow rising behind it. Behind the gate stands the headquarters: a glass tower seen a
+ * little from the left, its side face receding, a gridded crown under a white cap, and a low wing whose end turns round
+ * like a glass drum, banded with ribbon windows. In front, in the
  * page's grey (so the page seems to rise into the header), the gate itself, in the middle: the glass guard house in
  * the fence line and the lane beside it, under a frame with a band of glass, closed by a barrier with red bands, a no-entry sign hanging from it and its
  * signal on red, watched by two CCTV cameras; and either side, the same length, an estate fence (stone plinth, capped pillars with ball
@@ -242,20 +316,7 @@ export function GuestScene() {
           <Path d={CLOUDS.map(cloud).join('')} fill="#FFFFFF" fillOpacity={c.cloud} />
         )}
 
-        {/* The headquarters: its frame, the deeper glass (some windows lit at night), the sign on the crown. */}
-        <Path d={HQ_FRAME} fill="#FFFFFF" fillOpacity={c.frame} />
-        <Path d={box(WING.x, WING.y, WING.w, GROUND - WING.y)} fill="#FFFFFF" fillOpacity={c.wing} />
-        <Path d={HQ_GLASS} fill={c.glass.color} fillOpacity={c.glass.opacity} />
-        {night ? <Path d={HQ_LIT} fill={c.lit} fillOpacity={0.55} /> : null}
-        <Rect x={SIGN.x} y={SIGN.y} width={SIGN.w} height={SIGN.h} rx={2} fill={c.sign} />
-        <SvgImage
-          href={images.wordmark}
-          x={SIGN.x + (SIGN.w - LOGO_W) / 2}
-          y={SIGN.y + (SIGN.h - LOGO_H) / 2}
-          width={LOGO_W}
-          height={LOGO_H}
-          preserveAspectRatio="xMidYMid meet"
-        />
+        <Headquarters c={c} night={night} />
 
         {/* Near plane, in the page's grey. */}
         <G fill={c.land}>

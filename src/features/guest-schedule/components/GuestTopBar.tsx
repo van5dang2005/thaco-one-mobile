@@ -7,6 +7,10 @@ import { Icon } from '@/shared/ui/Icon';
 import { ChevronLeftIcon, ShieldCheckIcon } from '@/shared/ui/icons';
 import { onBlue, useHeaderColors } from '@/shared/ui/ScreenShell';
 import { Text } from '@/shared/ui/Text';
+import { ThacoWordmark } from '@/shared/ui/ThacoWordmark';
+
+/** Height of the THACO wordmark in its frame at the right end of the title's line. */
+const WORDMARK_H = 10;
 
 type Props = {
   title: string;
@@ -18,7 +22,11 @@ type Props = {
   testID?: string;
 };
 
-/** Toolbar of the guest screens on the blue of their picture, as on the blue headers: Back, the logo, the title over its subtitle. */
+/**
+ * Toolbar of the guest screens on the blue of their picture, as on the blue headers: Back, the logo, the title over its
+ * subtitle (the date, a size down), and the white THACO wordmark in a thin white frame at the right end of the title's
+ * line, level with it.
+ */
 export function GuestTopBar({ title, subtitle, logo, fallback, testID }: Props) {
   const { t } = useTranslation();
   const { fg, text2 } = useHeaderColors();
@@ -31,11 +39,16 @@ export function GuestTopBar({ title, subtitle, logo, fallback, testID }: Props) 
         </View>
       ) : null}
       <View className="min-w-0 flex-1">
-        <Text weight="bold" accessibilityRole="header" numberOfLines={1} style={{ fontSize: 19, lineHeight: 24, letterSpacing: -0.2, color: fg }}>
-          {title}
-        </Text>
+        <View className="flex-row items-center gap-3">
+          <Text weight="bold" accessibilityRole="header" numberOfLines={1} className="min-w-0 flex-1" style={{ fontSize: 15, lineHeight: 20, color: fg }}>
+            {title}
+          </Text>
+          <View className="items-center justify-center rounded-[7px] px-2" style={{ height: 24, borderWidth: 1.5, borderColor: onBlue(0.7) }}>
+            <ThacoWordmark testID={testID ? `${testID}-wordmark` : undefined} height={WORDMARK_H} color={fg} />
+          </View>
+        </View>
         {subtitle ? (
-          <Text weight="medium" numberOfLines={1} style={{ fontSize: 12.5, lineHeight: 16, color: text2 }}>
+          <Text weight="medium" numberOfLines={1} style={{ fontSize: 11.5, lineHeight: 15, color: text2 }}>
             {subtitle}
           </Text>
         ) : null}

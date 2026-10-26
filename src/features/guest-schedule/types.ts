@@ -4,6 +4,24 @@ import type { DateKey } from '@/core/time/vn';
 /** A gate record of the group: when the guard let it in or out, how many, and the guard's note. */
 export type GateRecordDto = { time?: string | null; note?: string | null; actualAmount?: number | null };
 
+/** Reception's record of one guest (`type` 1 check-in, 2 check-out). */
+export type ReceptionRecordDto = { id?: string; type?: number | null; time?: string | null; note?: string | null };
+
+/** A registered guest of `members[]`, with reception's records of them. */
+export type GuestMemberDto = {
+  memberId: string;
+  fullName?: string | null;
+  position?: string | null;
+  identityNumber?: string | null;
+  phone?: string | null;
+  /** Added on the day, beyond the registration. */
+  isExtra?: boolean | null;
+  /** Reception marked them as not come. */
+  isAbsent?: boolean | null;
+  checkIn?: ReceptionRecordDto | null;
+  checkOut?: ReceptionRecordDto | null;
+};
+
 /**
  * `GET /api/GuestSchedules/mobile/qr/{qrCode}` (also what check-in and check-out answer): the fields the app reads
  * (times are UTC). `canCheckOut` holds at the moment of the call (office hours 08:00–17:00 need a reception check-in).
@@ -26,11 +44,25 @@ export type GuestScheduleDto = {
   checkOut?: GateRecordDto | null;
   /** Units that receive the guests. */
   workingUnits?: { workingUnitId?: string; workingUnitName?: string | null }[] | null;
-  members?: { memberId: string; fullName?: string | null }[] | null;
+  members?: GuestMemberDto[] | null;
 };
 
 /** A gate record: when (ISO, UTC), how many and the guard's note. */
 export type GateRecord = { at: string; count: number | null; note: string | null };
+
+/** A registered guest and where reception has them: when it checked them in and out (ISO, UTC; null when not). */
+export type GuestMember = {
+  id: string;
+  name: string;
+  position: string | null;
+  identityNumber: string | null;
+  /** Added on the day, beyond the registration. */
+  extra: boolean;
+  /** Marked as not come: reception expects nothing of them. */
+  absent: boolean;
+  receptionIn: string | null;
+  receptionOut: string | null;
+};
 
 /** A guest visit registration, what a guest QR points to. */
 export type GuestVisit = {
@@ -48,8 +80,8 @@ export type GuestVisit = {
   toDate: string;
   /** Where the guests are received: the receiving units, "Công ty TNHH MTV Sản xuất và Lắp ráp xe tải THACO". */
   location?: string | null;
-  /** Names of the registered guests. */
-  members: string[];
+  /** The registered guests, with reception's records of them. */
+  members: GuestMember[];
   /** Where the group stands at the gate. */
   status: GuestVisitStatus;
   /** Whether the guard may let the group out now (only while it is in). */

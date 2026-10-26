@@ -132,11 +132,11 @@ export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem 
           <SectionTitle right={t('guestSchedule.detail.membersCount', { count: extra.members.length })} className="mb-1">
             {t('guestSchedule.detail.members')}
           </SectionTitle>
-          {extra.members.map((name, index) => (
-            <View key={`${index}-${name}`} className={cn('flex-row items-center gap-3 py-2.5', index > 0 && 'border-t border-line-2')}>
-              <Avatar name={name} size={32} />
+          {extra.members.map((member, index) => (
+            <View key={member.id || index} className={cn('flex-row items-center gap-3 py-2.5', index > 0 && 'border-t border-line-2')}>
+              <Avatar name={member.name} size={32} />
               <Text numberOfLines={2} className="min-w-0 flex-1 text-ink" style={{ fontSize: 14.5, lineHeight: 20 }}>
-                {name}
+                {member.name}
               </Text>
             </View>
           ))}

@@ -1,6 +1,6 @@
 import { diffDays, minutesOfDay, parseServerDate, toDateKey, todayKey } from '@/core/time/vn';
 
-import type { GateRecord, GateRecordDto, GuestErrorCode, GuestScheduleDto, GuestVisit } from '../types';
+import type { GateRecord, GateRecordDto, GuestErrorCode, GuestMember, GuestMemberDto, GuestScheduleDto, GuestVisit } from '../types';
 import { statusOf } from './schedule';
 
 /** The API link a guest QR holds: `…/api/GuestSchedules/mobile/qr/{code}` on a THACO server. */
@@ -23,6 +23,20 @@ function toGateRecord(dto: GateRecordDto | null | undefined): GateRecord | null 
   return { at: dto.time, count: dto.actualAmount ?? null, note: dto.note?.trim() || null };
 }
 
+/** A guest of the response, with when reception checked them in and out. */
+function toMember(dto: GuestMemberDto): GuestMember {
+  return {
+    id: dto.memberId,
+    name: dto.fullName?.trim() ?? '',
+    position: dto.position?.trim() || null,
+    identityNumber: dto.identityNumber?.trim() || null,
+    extra: !!dto.isExtra,
+    absent: !!dto.isAbsent,
+    receptionIn: dto.checkIn?.time ?? null,
+    receptionOut: dto.checkOut?.time ?? null,
+  };
+}
+
 /** The visit in a lookup response; null when it holds none. A left group (`isViewOnly`) counts as gone whatever its status says. */
 export function toVisit(dto: GuestScheduleDto | null | undefined, link: string): GuestVisit | null {
   if (!dto?.guestScheduleId) return null;
@@ -36,12 +50,25 @@ export function toVisit(dto: GuestScheduleDto | null | undefined, link: string):
     fromDate: dto.startDate ?? '',
     toDate: dto.endDate ?? dto.startDate ?? '',
     location: units.length ? units.join(', ') : null,
-    members: (dto.members ?? []).map((member) => member.fullName?.trim() ?? '').filter(Boolean),
+    members: (dto.members ?? []).map(toMember),
     status: dto.isViewOnly ? 'checkedOut' : statusOf(dto.securityCheckInStatus),
     canCheckOut: !dto.isViewOnly && !!dto.canCheckOut,
     checkIn: toGateRecord(dto.checkIn),
     checkOut: toGateRecord(dto.checkOut),
   };
+}
+
+/**
+ * How far reception is with the group: the guests it expects (all but the absent), how many it has checked in (a
+ * check-out implies one) and out. `done` once every expected guest is checked out; never for a group without names.
+ */
+export type ReceptionTally = { expected: number; checkedIn: number; checkedOut: number; done: boolean };
+
+export function receptionTally(members: GuestMember[]): ReceptionTally {
+  const expected = members.filter((member) => !member.absent);
+  const checkedOut = expected.filter((member) => member.receptionOut).length;
+  const checkedIn = expected.filter((member) => member.receptionIn || member.receptionOut).length;
+  return { expected: expected.length, checkedIn, checkedOut, done: expected.length > 0 && checkedOut === expected.length };
 }
 
 /** Where today falls in the visit's working period (Vietnam days). */
