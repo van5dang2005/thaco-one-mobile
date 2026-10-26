@@ -2,11 +2,10 @@ import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { BackHandler, Linking, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { goBack } from '@/shared/lib/navigation';
 import { Button } from '@/shared/ui/Button';
 import { Icon } from '@/shared/ui/Icon';
 import { type AppIcon, CameraIcon, ChevronLeftIcon, FlashlightIcon, FlashlightOffIcon, ScanQrCodeIcon } from '@/shared/ui/icons';
@@ -26,6 +25,7 @@ const SCRIM = 'rgba(0, 0, 0, 0.42)';
 /**
  * "Quét mã QR" (guest check-in, step 1): the back camera full screen with a frame and a sweeping line; the toolbar
  * (back, title, torch) and the hint float over it. A QR opens "Xác nhận vào cổng"; coming back here scans again.
+ * Back (the button, and Android's) goes straight to "Lịch khách", whatever scans and lists are under this screen.
  */
 export function GuestScanScreen() {
   const { t } = useTranslation();
@@ -34,12 +34,22 @@ export function GuestScanScreen() {
   const cam = camera();
   useLightStatusBar();
 
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        toDashboard();
+        return true;
+      });
+      return () => sub.remove();
+    }, []),
+  );
+
   return (
     <View testID="guest-scan-screen" className="flex-1" style={{ backgroundColor: '#000000' }}>
       <View style={StyleSheet.absoluteFill}>{cam ? <Scanner cam={cam} torch={torch} /> : <Blocked message={t('guestSchedule.scan.unsupported')} />}</View>
 
       <View testID="guest-scan-header" className="absolute left-0 right-0 top-0 min-h-10 flex-row items-center gap-3 px-4" style={{ paddingTop: insets.top + 10 }}>
-        <CamButton testID="guest-scan-back" icon={ChevronLeftIcon} label={t('common.back')} onPress={() => goBack('/guests')} />
+        <CamButton testID="guest-scan-back" icon={ChevronLeftIcon} label={t('common.back')} onPress={toDashboard} />
         <Text weight="bold" accessibilityRole="header" numberOfLines={1} className="flex-1 text-center" style={{ color: '#FFFFFF', fontSize: 17, lineHeight: 22 }}>
           {t('guestSchedule.scan.title')}
         </Text>
@@ -66,6 +76,11 @@ export function GuestScanScreen() {
       </View>
     </View>
   );
+}
+
+/** Back to "Lịch khách": pops to it when it is under this screen, else (a deep link) puts it in this screen's place. */
+function toDashboard() {
+  router.dismissTo('/guests');
 }
 
 /** 40pt round button floating on the camera; `active` (torch on) turns it white. */

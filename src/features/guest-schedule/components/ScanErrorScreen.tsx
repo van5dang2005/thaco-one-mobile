@@ -6,7 +6,6 @@ import { View } from 'react-native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 import { useTheme } from '@/core/theme/ThemeProvider';
-import { goBack } from '@/shared/lib/navigation';
 import { Button } from '@/shared/ui/Button';
 import { Card, FloatingCard } from '@/shared/ui/Card';
 import { Icon } from '@/shared/ui/Icon';
@@ -68,7 +67,7 @@ export function ScanErrorScreen({ header, error, qr, retrying, onRetry }: Props)
   const { t } = useTranslation();
   const kind = kindOf(error);
   const text = copy[kind];
-  const rescan = () => goBack('/guests/scan');
+  const rescan = () => router.dismissTo('/guests/scan');
 
   useEffect(() => {
     if (kind !== 'failed') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

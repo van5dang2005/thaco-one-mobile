@@ -1424,7 +1424,7 @@ const vi = {
       extra: 'Khách bổ sung',
       absent: 'Vắng',
       left: 'Đã ra · {{time}}',
-      inside: 'Còn ở trong',
+      inside: 'Đang làm việc',
       notIn: 'Chưa check-in',
     },
     view: {

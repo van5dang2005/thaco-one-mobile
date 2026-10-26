@@ -494,7 +494,8 @@ function GateView({ visit, header, refreshing, onRefresh }: { visit: GuestVisit;
       : visit.status === 'rejected'
         ? { tone: 'danger' as const, text: t('guestSchedule.view.rejected') }
         : { tone: 'warning' as const, text: t('guestSchedule.view.waitReception') };
-  const rescan = () => router.replace('/guests/scan');
+  // Back to the camera already under this screen, not another one on top of it.
+  const rescan = () => router.dismissTo('/guests/scan');
 
   return (
     <ModuleScreen

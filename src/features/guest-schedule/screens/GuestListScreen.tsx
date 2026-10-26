@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
@@ -11,8 +11,9 @@ import { useTheme } from '@/core/theme/ThemeProvider';
 import { formatKey, todayKey, weekdayOf } from '@/core/time/vn';
 import { useDebounced } from '@/shared/hooks/useDebounced';
 import { usePullRefresh } from '@/shared/hooks/usePullRefresh';
+import { Button } from '@/shared/ui/Button';
 import { FilterChip } from '@/shared/ui/Chip';
-import { SearchIcon, UsersIcon } from '@/shared/ui/icons';
+import { ScanQrCodeIcon, SearchIcon, UsersIcon } from '@/shared/ui/icons';
 import { CardSkeleton } from '@/shared/ui/Skeleton';
 import { EmptyState, ErrorState } from '@/shared/ui/StateViews';
 import { Text } from '@/shared/ui/Text';
@@ -33,7 +34,8 @@ const TABS: GuestVisitTab[] = ['all', 'pending', 'confirmed', 'checkedIn', 'chec
  * "Xem tất cả" of the dashboard: the title on the blue picture of the plant's gate, cut just under it, then
  * on a square-topped grey panel a search field, the status tabs and the day's visits in time order, in a FlatList that
  * loads the next page as it nears the end. A visit opens its details in a sheet. Opens on the `tab` param (a dashboard
- * counter), else on every visit.
+ * counter), else on every visit. "Quét mã QR" floats at the bottom, as on the dashboard; it takes this screen's place, so
+ * Back from the camera lands on the dashboard.
  */
 export function GuestListScreen() {
   const { t } = useTranslation();
@@ -72,6 +74,7 @@ export function GuestListScreen() {
   };
 
   const panel = { backgroundColor: guestPageColors[scheme] };
+  const bottomEdge = Math.max(insets.bottom, 12);
   const loadMore = () => {
     if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
   };
@@ -147,11 +150,15 @@ export function GuestListScreen() {
         // Grey down to the screen's end under a short list, so the drawing never shows below the visits.
         ListFooterComponentStyle={[{ flexGrow: 1 }, panel]}
         ListFooterComponent={
-          <View style={{ paddingBottom: Math.max(insets.bottom, 12) + 6 }}>
+          <View style={{ paddingBottom: bottomEdge + 84 }}>
             {query.isFetchingNextPage ? <Text className="py-2 text-center text-meta text-muted">{t('common.loadMore')}</Text> : null}
           </View>
         }
       />
+
+      <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 px-4" style={{ paddingBottom: bottomEdge }}>
+        <Button testID="guests-list-scan" icon={ScanQrCodeIcon} label={t('guestSchedule.dashboard.scan')} onPress={() => router.replace('/guests/scan')} />
+      </View>
       <VisitDetailSheet visit={selected} onClose={() => setSelected(null)} />
     </GuestPage>
   );

@@ -3,7 +3,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { BackHandler, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,7 +29,7 @@ const CONFETTI = [
 
 /**
  * "Check-in thành công!" or, after letting a group out (`kind` out), "Check-out thành công!": the group, when it passed
- * the gate, head count and place.
+ * the gate, head count and place. Its button (and Android's Back) goes back to "Lịch khách", not to the camera under it.
  */
 export function GuestCheckInSuccessScreen() {
   const { t } = useTranslation();
@@ -42,6 +42,16 @@ export function GuestCheckInSuccessScreen() {
     useCallback(() => {
       setStatusBarStyle(scheme === 'dark' ? 'light' : 'dark');
     }, [scheme]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        toDashboard();
+        return true;
+      });
+      return () => sub.remove();
+    }, []),
   );
 
   useEffect(() => {
@@ -104,9 +114,14 @@ export function GuestCheckInSuccessScreen() {
         </Animated.View>
       </View>
 
-      <Button testID="guest-success-home" size="xl" pill label={t('guestSchedule.success.home')} onPress={() => router.dismissTo('/')} />
+      <Button testID="guest-success-home" size="xl" pill label={t('guestSchedule.success.home')} onPress={toDashboard} />
     </View>
   );
+}
+
+/** Back to "Lịch khách": pops to it when it is under this screen, else (a deep link) puts it in this screen's place. */
+function toDashboard() {
+  router.dismissTo('/guests');
 }
 
 function Row({ icon, text, divider }: { icon: AppIcon; text: string; divider?: boolean }) {

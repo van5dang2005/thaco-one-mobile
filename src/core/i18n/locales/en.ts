@@ -1424,7 +1424,7 @@ const en: Translation = {
       extra: 'Added on the day',
       absent: 'Absent',
       left: 'Left · {{time}}',
-      inside: 'Still inside',
+      inside: 'At work',
       notIn: 'Not checked in',
     },
     view: {
