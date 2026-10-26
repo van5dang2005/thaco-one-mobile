@@ -45,7 +45,7 @@ import { guestApi } from '../api/guest.api';
 import { ScanErrorScreen } from '../components/ScanErrorScreen';
 import { type GateInput, GuestError, type GateRecord, type GuestMember, type GuestVisit } from '../types';
 import { guestErrorMessage } from '../utils/errors';
-import { checkOutBlocker, type GateMode, gateModeOf, isOfficeHours, type ReceptionTally, receptionTally, visitPhase } from '../utils/visit';
+import { checkOutBlocker, type GateMode, gateModeOf, type ReceptionTally, receptionTally, visitPhase } from '../utils/visit';
 
 const NOTE_MAX = 500;
 
@@ -90,10 +90,11 @@ const whenOf = (record: GateRecord) => {
 
 /**
  * What a scanned guest QR (or a visit opened from the list) leads to, by where the group stands at the gate:
- * "Xác nhận vào cổng" while it waits outside, "Xác nhận ra cổng" while it is in and may leave now, otherwise the group
- * shown read-only with why (gone and the code spent, inside but reception has not checked anyone in during office
- * hours, or turned away). Once reception has checked every guest out, leaving is only a check of the list and one tap,
- * with the full form a tap away. The group sits on the blue header, its registration in a card over it.
+ * "Xác nhận vào cổng" while it waits outside, "Xác nhận ra cổng" while it is in and may leave now (at any hour, once
+ * reception has checked a guest in), otherwise the group shown read-only with why (gone and the code spent, inside but
+ * reception has checked no one in yet, or turned away). Reception checking everyone out closes the gate on the server,
+ * so such a group reads as gone; should one still be in, leaving is only a check of the list and one tap, with the full
+ * form a tap away. The group sits on the blue header, its registration in a card over it.
  */
 export function GuestCheckInScreen() {
   const { t } = useTranslation();
@@ -247,9 +248,8 @@ function useGateStep(step: GateStep, visit: GuestVisit, qr: string) {
 /**
  * The guard's form for a gate step: time, head count (against the registration going in, against the count that went
  * in going out) and a note. Going in it warns outside the visit period. Going out it lists the guests with where
- * reception has them. Outside office hours the guard stands in for reception, and the server checks out of reception
- * whoever reception has not, which it says; during them it warns while reception has not checked everyone out (the
- * group leaves only once). Once reception has, the count starts at reception's.
+ * reception has them, and while reception has not checked everyone out it warns that leaving checks the rest out of
+ * reception too (the group leaves only once). Once reception has, the count starts at reception's.
  */
 function GateForm({ step, visit, qr, header }: { step: GateStep; visit: GuestVisit; qr: string; header: ReactNode }) {
   const { t } = useTranslation();
@@ -296,15 +296,9 @@ function GateForm({ step, visit, qr, header }: { step: GateStep; visit: GuestVis
             : t('guestSchedule.checkIn.endedWarning', { date: formatKey(toKey) })}
         </Banner>
       ) : null}
-      {step === 'out' && !isOfficeHours(now) ? (
-        <Banner testID="guest-check-out-after-hours" tone="info">
-          {tally.expected > tally.checkedOut
-            ? t('guestSchedule.checkOut.afterHoursRest', { count: tally.expected - tally.checkedOut })
-            : t('guestSchedule.checkOut.afterHours')}
-        </Banner>
-      ) : step === 'out' && tally.expected > 0 && !tally.done ? (
+      {step === 'out' && tally.expected > 0 && !tally.done ? (
         <Banner testID="guest-check-out-reception-partial" tone="warning">
-          {t('guestSchedule.checkOut.receptionPartial', { left: tally.checkedOut, expected: tally.expected })}
+          {t('guestSchedule.checkOut.receptionPartial', { left: tally.checkedOut, expected: tally.expected, count: tally.expected - tally.checkedOut })}
         </Banner>
       ) : null}
 
@@ -364,7 +358,8 @@ function GateForm({ step, visit, qr, header }: { step: GateStep; visit: GuestVis
 }
 
 /**
- * Leaving once reception has checked every expected guest out: the guard only checks the group against the list and
+ * Leaving once reception has checked every expected guest out but the gate is still open (the server normally closes
+ * it then; a group from before that rule, or read in between): the guard only checks the group against the list and
  * lets it out in one tap, now and as many as reception checked out. The head counts replace the period on the card,
  * and a count other than the one that came in is flagged. The full form stays a tap away for a note or another count.
  */
@@ -482,8 +477,9 @@ function MemberRow({ member, divider }: { member: GuestMember; divider: boolean 
 
 /**
  * The group read-only: why nothing can be done at the gate now, then its gate log (in and out, with head count and
- * note). Inside during office hours it can be checked again once reception has checked someone in; otherwise the
- * guard moves on to another code.
+ * note). Inside, it can be checked again once reception has checked someone in; otherwise the guard moves on to
+ * another code. A group gone also lists its guests with when reception checked them out: once reception has checked
+ * everyone out the server closes the gate itself, and the guard checks the group against the list as it leaves.
  */
 function GateView({ visit, header, refreshing, onRefresh }: { visit: GuestVisit; header: ReactNode; refreshing: boolean; onRefresh: () => void }) {
   const { t } = useTranslation();
@@ -529,6 +525,8 @@ function GateView({ visit, header, refreshing, onRefresh }: { visit: GuestVisit;
           {visit.checkOut ? <GateLogRow icon={LogOutIcon} label={t('guestSchedule.view.left')} record={visit.checkOut} divider={!!visit.checkIn} /> : null}
         </Card>
       ) : null}
+
+      {visit.status === 'checkedOut' && visit.members.length ? <MemberList members={visit.members} tally={receptionTally(visit.members)} /> : null}
     </ModuleScreen>
   );
 }

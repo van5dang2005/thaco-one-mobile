@@ -30,8 +30,8 @@ const iconTones: Record<GuestVisitStatus, RoundIconTone> = { pending: 'warn', ch
 /**
  * A visit of the list in full: the group with its registration number, status and guest type, then head count, start
  * and end, the receiving units, and from the QR lookup when it passed the gate and the guests by name. A group inside
- * that may leave now gets "Xác nhận ra cổng" (the gate screen for its code); one inside that may not yet (office hours,
- * reception has checked no one in) says why. `visit` null closes it.
+ * that may leave now gets "Xác nhận ra cổng" (the gate screen for its code); one inside that may not yet (reception has
+ * checked no one in) says why. `visit` null closes it.
  */
 export function VisitDetailSheet({ visit, onClose }: { visit: GuestScheduleItem | null; onClose: () => void }) {
   const { t } = useTranslation();

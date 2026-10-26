@@ -73,7 +73,8 @@ export const guestApi = {
 
   /**
    * Records the group leaving: `POST …/mobile/qr/{code}/check-out`, same body. Only while the lookup says
-   * `canCheckOut`; outside office hours the server also closes the guests' reception records.
+   * `canCheckOut`; the server also checks out of reception every guest it has not (and, the other way round, closes the
+   * gate itself once reception has checked out everyone present).
    */
   checkOut(input: GateInput, visit: GuestVisit): Promise<GatePass> {
     return passGate('check-out', input, visit);

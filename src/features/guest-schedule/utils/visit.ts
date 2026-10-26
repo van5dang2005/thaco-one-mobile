@@ -1,4 +1,4 @@
-import { diffDays, minutesOfDay, parseServerDate, toDateKey, todayKey } from '@/core/time/vn';
+import { diffDays, parseServerDate, toDateKey, todayKey } from '@/core/time/vn';
 
 import type { GateRecord, GateRecordDto, GuestErrorCode, GuestMember, GuestMemberDto, GuestScheduleDto, GuestVisit } from '../types';
 import { statusOf } from './schedule';
@@ -83,7 +83,11 @@ export function visitPhase(visit: Pick<GuestVisit, 'fromDate' | 'toDate'>, now =
   return { kind: day < 1 ? 'upcoming' : day > days ? 'ended' : 'ongoing', day, days };
 }
 
-/** What the guard can do with the group now: let it in, let it out, or only look (gone, turned away, or waiting on reception). */
+/**
+ * What the guard can do with the group now: let it in, let it out, or only look (gone, turned away, or inside with no
+ * guest checked in at reception yet). Leaving goes at any hour: the server allows it once the group is in and
+ * reception has checked someone in (`canCheckOut`).
+ */
 export type GateMode = 'in' | 'out' | 'view';
 
 export function gateModeOf(visit: Pick<GuestVisit, 'status' | 'canCheckOut'>): GateMode {
@@ -96,12 +100,4 @@ export function checkOutBlocker(visit: Pick<GuestVisit, 'status'>): GuestErrorCo
   if (visit.status === 'checkedOut') return 'ALREADY_CHECKED_OUT';
   if (visit.status === 'pending') return 'CHECKIN_REQUIRED';
   return visit.status === 'rejected' ? 'INVALID_SCHEDULE_STATE' : 'RECEPTION_CHECKIN_REQUIRED';
-}
-
-/** Office hours on the server's clock, Vietnam time, every day: 08:00 included, 17:00 already after hours. */
-export const OFFICE_HOURS = { from: 8 * 60, to: 17 * 60 };
-
-export function isOfficeHours(now = new Date()): boolean {
-  const minutes = minutesOfDay(now);
-  return minutes >= OFFICE_HOURS.from && minutes < OFFICE_HOURS.to;
 }

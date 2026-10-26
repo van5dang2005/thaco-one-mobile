@@ -1,5 +1,5 @@
 import { type GuestScheduleDto, SecurityCheckInStatus } from '../../types';
-import { checkOutBlocker, gateModeOf, isOfficeHours, qrLinkOf, receptionTally, toVisit, visitPhase } from '../visit';
+import { checkOutBlocker, gateModeOf, qrLinkOf, receptionTally, toVisit, visitPhase } from '../visit';
 
 const CODE = '0807954103354f829a1375e0e0cb138e';
 const LINK = `https://uatapi01.thaco.com.vn/api/GuestSchedules/mobile/qr/${CODE}`;
@@ -158,7 +158,7 @@ describe('receptionTally', () => {
     expect(receptionTally([guest('a', { receptionIn: IN, receptionOut: OUT }), guest('b', { receptionIn: IN }), guest('c')])).toEqual({ expected: 3, checkedIn: 2, checkedOut: 1, done: false });
   });
 
-  it('counts a check-out alone as in and out (after hours the server writes both)', () => {
+  it('counts a check-out alone as in and out (the guard\'s check-out writes both for a guest never checked in)', () => {
     expect(receptionTally([guest('a', { receptionOut: OUT })])).toEqual({ expected: 1, checkedIn: 1, checkedOut: 1, done: true });
   });
 
@@ -193,15 +193,5 @@ describe('checkOutBlocker', () => {
     expect(checkOutBlocker({ status: 'checkedOut' })).toBe('ALREADY_CHECKED_OUT');
     expect(checkOutBlocker({ status: 'pending' })).toBe('CHECKIN_REQUIRED');
     expect(checkOutBlocker({ status: 'rejected' })).toBe('INVALID_SCHEDULE_STATE');
-  });
-});
-
-describe('isOfficeHours', () => {
-  it('runs from 08:00 up to, not including, 17:00 Vietnam time', () => {
-    expect(isOfficeHours(new Date('2026-10-23T00:59:00Z'))).toBe(false); // 07:59
-    expect(isOfficeHours(new Date('2026-10-23T01:00:00Z'))).toBe(true); // 08:00
-    expect(isOfficeHours(new Date('2026-10-23T09:59:00Z'))).toBe(true); // 16:59
-    expect(isOfficeHours(new Date('2026-10-23T10:00:00Z'))).toBe(false); // 17:00
-    expect(isOfficeHours(new Date('2026-10-25T03:00:00Z'))).toBe(true); // Sunday 10:00, every day counts
   });
 });

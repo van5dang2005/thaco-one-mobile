@@ -24,7 +24,8 @@ export type GuestMemberDto = {
 
 /**
  * `GET /api/GuestSchedules/mobile/qr/{qrCode}` (also what check-in and check-out answer): the fields the app reads
- * (times are UTC). `canCheckOut` holds at the moment of the call (office hours 08:00–17:00 need a reception check-in).
+ * (times are UTC). `canCheckOut` holds at the moment of the call: the group is in and reception has checked at least one
+ * guest in, at any hour.
  */
 export type GuestScheduleDto = {
   guestScheduleId: string;

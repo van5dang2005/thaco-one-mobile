@@ -1404,9 +1404,7 @@ const en: Translation = {
       countMore: '{{count}} more than came in',
       countLess: '{{count}} fewer than came in',
       submit: 'Confirm exit',
-      afterHours: 'Outside office hours: the guard confirms the exit for reception.',
-      afterHoursRest: 'Outside office hours: the guard confirms the exit for reception. The system checks the {{count}} remaining guests out of reception, so confirm only once the whole group has left.',
-      receptionPartial: 'Reception has checked out {{left}} of {{expected}} guests. A group leaves the gate only once, so wait for everyone before confirming.',
+      receptionPartial: 'Reception has checked out {{left}} of {{expected}} guests. Confirming the exit also checks the {{count}} remaining guests out of reception, so confirm only once the whole group has left.',
     },
     release: {
       ready: 'Reception has checked out all {{count}} guests. Check the list, then let the group out.',
@@ -1430,7 +1428,7 @@ const en: Translation = {
     view: {
       title: 'Guest group',
       checkedOut: 'This group has left. The code is view-only and cannot check in or out again.',
-      waitReception: 'During office hours (08:00–17:00) reception must check the guests in before the exit can be confirmed.',
+      waitReception: 'Reception has not checked any guest in yet, so the exit cannot be confirmed.',
       rejected: 'This guest group was rejected; no gate action.',
       gateLog: 'Gate log',
       entered: 'Entered',
@@ -1474,7 +1472,7 @@ const en: Translation = {
       ALREADY_CHECKED_IN: 'This group has already checked in.',
       ALREADY_CHECKED_OUT: 'This group has already left. The code is view-only.',
       CHECKIN_REQUIRED: 'The group must check in before it can check out.',
-      RECEPTION_CHECKIN_REQUIRED: 'During office hours (08:00–17:00) reception must check the guests in before the exit can be confirmed.',
+      RECEPTION_CHECKIN_REQUIRED: 'Reception has not checked any guest in yet, so the exit cannot be confirmed.',
       INVALID_SCHEDULE_STATE: 'This visit is no longer approved.',
     },
   },

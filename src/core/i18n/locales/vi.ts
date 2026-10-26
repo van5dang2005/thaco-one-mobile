@@ -1404,9 +1404,7 @@ const vi = {
       countMore: 'Nhiều hơn {{count}} khách',
       countLess: 'Ít hơn {{count}} khách',
       submit: 'Xác nhận ra cổng',
-      afterHours: 'Ngoài giờ hành chính: bảo vệ xác nhận ra cổng thay lễ tân.',
-      afterHoursRest: 'Ngoài giờ hành chính: bảo vệ xác nhận ra cổng thay lễ tân. Hệ thống sẽ tự checkout lễ tân cho {{count}} khách còn lại, nên chỉ xác nhận khi cả đoàn đã ra.',
-      receptionPartial: 'Lễ tân mới checkout {{left}}/{{expected}} khách. Mỗi đoàn chỉ xác nhận ra cổng một lần, nên chờ đủ khách rồi hãy xác nhận.',
+      receptionPartial: 'Lễ tân mới checkout {{left}}/{{expected}} khách. Xác nhận ra cổng sẽ tự checkout lễ tân cho {{count}} khách còn lại, nên chỉ xác nhận khi cả đoàn đã ra.',
     },
     release: {
       ready: 'Lễ tân đã checkout đủ {{count}} khách. Đối chiếu danh sách rồi cho đoàn ra cổng.',
@@ -1430,7 +1428,7 @@ const vi = {
     view: {
       title: 'Thông tin đoàn khách',
       checkedOut: 'Đoàn đã ra cổng. Mã chỉ dùng để xem, không xác nhận vào hoặc ra lại.',
-      waitReception: 'Trong giờ hành chính (08:00–17:00), lễ tân chưa check-in nên chưa thể xác nhận ra cổng.',
+      waitReception: 'Lễ tân chưa check-in khách nào nên chưa thể xác nhận ra cổng.',
       rejected: 'Đoàn khách đã bị từ chối, không thao tác cổng.',
       gateLog: 'Lượt ra vào',
       entered: 'Vào cổng',
@@ -1474,7 +1472,7 @@ const vi = {
       ALREADY_CHECKED_IN: 'Đoàn đã vào cổng.',
       ALREADY_CHECKED_OUT: 'Đoàn đã ra cổng. Mã chỉ dùng để xem, không check-in hoặc check-out lại.',
       CHECKIN_REQUIRED: 'Đoàn phải vào cổng trước khi ra cổng.',
-      RECEPTION_CHECKIN_REQUIRED: 'Trong giờ hành chính (08:00–17:00), lễ tân chưa check-in nên chưa thể xác nhận ra cổng.',
+      RECEPTION_CHECKIN_REQUIRED: 'Lễ tân chưa check-in khách nào nên chưa thể xác nhận ra cổng.',
       INVALID_SCHEDULE_STATE: 'Lịch khách không còn ở trạng thái đã duyệt.',
     },
   },
