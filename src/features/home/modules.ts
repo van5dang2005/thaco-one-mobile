@@ -79,7 +79,7 @@ export type HomeModule = ModuleLabel & {
 
 /**
  * Tiles of the apps with screens here, in display order. Home shows the tiles of each back-end the portal
- * grants (`appModules`); any other granted app gets one tile that opens it on the web. Add a tile by
+ * grants (`appModules`), plus one tile per granted phone app (E-sign, Paytime); other apps get none. Add a tile by
  * appending an entry: every layout, the permission filter, badges and summaries pick it up.
  *
  * The array must stay a constant: `useModuleSignals` calls each module's hooks in this order.

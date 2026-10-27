@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import type { ServiceId } from '@/core/api/ApiError';
 import { env, type PhoneApp } from '@/core/config/env';
 import type { Capability } from '@/core/session/capabilities';
-import { hiddenAppCodes, type MyApp, serviceAppCodes, sortApps } from '@/core/session/myApps';
+import { type MyApp, serviceAppCodes, sortApps } from '@/core/session/myApps';
 import { AppWindowIcon } from '@/shared/ui/icons';
 
 import type { HomeModule, ModuleGroup } from '../modules';
@@ -26,9 +26,6 @@ export function canSeeModule(module: Pick<HomeModule, 'permission'>, ctx: Access
 export function filterModules<M extends Pick<HomeModule, 'permission'>>(modules: readonly M[], ctx: AccessContext): M[] {
   return modules.filter((module) => canSeeModule(module, ctx));
 }
-
-/** The device can open it: it names a scheme (`https:`, `vn.com.thaco.paytime:`…), unlike a path relative to the portal. */
-const OPENABLE_URL = /^[a-z][a-z\d+.-]*:/i;
 
 /** Portal names lead with the kind of thing ("Phần mềm Quản lý bưu phẩm", "PM Văn Thư"). */
 const SOFTWARE_LEAD = /^(phần\s+mềm|pm)\s+/i;
@@ -60,13 +57,11 @@ export function phoneAppLink(
 }
 
 /**
- * Tile of a granted app without screens here, under the portal's name and icon: its phone app when `env.phoneApps`
- * names one, else its web app (`url`); `null` with nothing to open.
+ * Tile of a granted app without screens here, under the portal's name and icon, that opens its phone app
+ * (`env.phoneApps`: E-sign, Paytime); `null` for any other app, which Home leaves out.
  */
-export function webModule(app: MyApp, os: Os = Platform.OS === 'ios' ? 'ios' : 'android'): HomeModule | null {
-  const phone = phoneAppLink(app.code, os);
-  const url = app.url?.trim();
-  const target = phone ?? (url && OPENABLE_URL.test(url) ? { externalUrl: url } : null);
+export function phoneModule(app: MyApp, os: Os = Platform.OS === 'ios' ? 'ios' : 'android'): HomeModule | null {
+  const target = phoneAppLink(app.code, os);
   if (!target) return null;
   const title = app.name?.trim() || app.code;
   return {
@@ -78,28 +73,27 @@ export function webModule(app: MyApp, os: Os = Platform.OS === 'ios' ? 'ios' : '
     iconUrl: app.icon?.trim() || undefined,
     description: app.description?.trim() || undefined,
     ...target,
-    opensApp: !!phone,
+    opensApp: true,
   };
 }
 
 /**
  * Home tiles of the portal's `apps`: the `native` tiles of each app with screens here, in portal order, then a
- * `webModule` for every other app (also one whose back-end has no tiles yet). An app listed twice counts once;
- * `hiddenAppCodes` get no tile.
+ * `phoneModule` for each phone app; every other app gets no tile. An app listed twice counts once.
  */
 export function appModules(apps: readonly MyApp[] | null, native: readonly HomeModule[]): HomeModule[] {
   const seen = new Set<string>();
   const own: HomeModule[] = [];
-  const web: HomeModule[] = [];
+  const phone: HomeModule[] = [];
   for (const app of sortApps(apps ?? [])) {
-    if (seen.has(app.code) || hiddenAppCodes.has(app.code)) continue;
+    if (seen.has(app.code)) continue;
     seen.add(app.code);
     const tiles = native.filter((module) => portalCode(module) === app.code);
-    const tile = tiles.length ? null : webModule(app);
+    const tile = tiles.length ? null : phoneModule(app);
     own.push(...tiles);
-    if (tile) web.push(tile);
+    if (tile) phone.push(tile);
   }
-  return [...own, ...web];
+  return [...own, ...phone];
 }
 
 /** Portal code of the app that grants a tile with screens here. */
