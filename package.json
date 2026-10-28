@@ -98,7 +98,9 @@
     "build:android:preview": "eas build --platform android --profile preview",
     "build:android:prod": "eas build --platform android --profile production",
     "build:ios:preview": "eas build --platform ios --profile preview",
-    "build:ios:prod": "eas build --platform ios --profile production"
+    "build:ios:prod": "eas build --platform ios --profile production",
+    "build:ios:prod:local": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 eas build --platform ios --profile production --local --output ./build/thaco-one.ipa",
+    "build:android:prod:local": "eas build --platform android --profile production --local --output ./build/thaco-one.aab"
   },
   "private": true,
   "jest": {
