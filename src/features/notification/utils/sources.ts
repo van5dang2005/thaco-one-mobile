@@ -1,3 +1,4 @@
+import { hiddenAppCodes } from '@/core/session/myApps';
 import { documentNotificationSource } from '@/features/official-document/utils/notificationSource';
 import { parcelNotificationSource } from '@/features/parcel/utils/notificationSource';
 import { roomNotificationSource } from '@/features/room-booking/utils/notificationSource';
@@ -12,7 +13,8 @@ import type { NotificationSource } from '../types';
 export const notificationSources: readonly NotificationSource[] = [
   roomNotificationSource,
   parcelNotificationSource,
-  documentNotificationSource,
+  // Not in builds that hide Văn thư (`hiddenAppCodes`), so a stray push cannot open its screens either.
+  ...(hiddenAppCodes.has('VANTHU') ? [] : [documentNotificationSource]),
 ];
 
 export const findNotificationSource = (id: unknown) => notificationSources.find((source) => source.id === id);

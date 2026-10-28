@@ -5,7 +5,7 @@ import { clearQueryCache } from '@/core/query/queryClient';
 import { kv, kvKeys, readJSON, writeJSON } from '@/core/storage/kv';
 
 import { biometricAccount, type BiometricSession, disableBiometric, dropOrphanedCredentials, dropOthersBiometric, enableBiometric } from './biometric';
-import { fetchMyApps, type MyApp } from './myApps';
+import { fetchMyApps, type MyApp, visibleApps } from './myApps';
 import { type SignOutReason, useSessionStore } from './sessionStore';
 import { endSsoSession, fetchSsoAccount, passwordGrant, refreshGrant, refreshTokenInfo, type SsoAccount } from './sso';
 import { SsoError } from './SsoError';
@@ -181,7 +181,9 @@ export async function restoreSession() {
   const username = kv.getString(kvKeys.lastUsername) ?? null;
   // A session started by an app version that left the previous person's biometric sign-in on.
   if (username) await dropOthersBiometric({ login: { username, domain: kv.getString(kvKeys.lastDomain) ?? '' }, userId: readJSON<SsoAccount>(kvKeys.ssoAccount)?.id });
-  const apps = readJSON<MyApp[]>(kvKeys.myApps) ?? null;
+  // Saved by a build that showed apps this one hides.
+  const saved = readJSON<MyApp[]>(kvKeys.myApps);
+  const apps = saved ? visibleApps(saved) : null;
   useSessionStore.getState().markSignedIn({ username, apps });
   void refreshMyApps();
 }

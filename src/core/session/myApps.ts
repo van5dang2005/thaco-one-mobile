@@ -1,3 +1,5 @@
+import Constants from 'expo-constants';
+
 import type { ServiceId } from '@/core/api/ApiError';
 import { services } from '@/core/api/clients';
 import { fetchWithTimeout } from '@/core/api/fetchWithTimeout';
@@ -30,6 +32,14 @@ type MyAppsReply = { data?: MyApp[] | null; success?: boolean; message?: string 
 /** Portal code of each back-end this app has screens for: the app calls a back-end only while `my-apps` lists its code. */
 export const serviceAppCodes: Record<ServiceId, string> = { parcel: 'PARCEL_MANAGEMENT_WEB', room: 'BOOKING_ROOM_WEB' };
 
+/** Portal apps this build never shows, even when granted: production leaves Văn thư (`VANTHU`) out for now. */
+export const hiddenAppCodes: ReadonlySet<string> = new Set(Constants.expoConfig?.extra?.appEnv === 'production' ? ['VANTHU'] : []);
+
+/** `apps` without the `hiddenAppCodes`: Home tiles, counters and notification tabs only see these. */
+export function visibleApps(apps: MyApp[]): MyApp[] {
+  return apps.filter((app) => !hiddenAppCodes.has(app.code));
+}
+
 /**
  * Back-ends the portal grants; none while its list is unknown (`null`). A back-end the user lacks answers
  * 401 to every call, each one costing a token refresh.
@@ -61,5 +71,5 @@ export async function fetchMyApps(account: SsoAccount): Promise<MyApp[]> {
   if (!response.ok || !reply || reply.success === false || !Array.isArray(reply.data)) {
     throw new Error(`MY_APPS_${response.status}${reply?.message ? `: ${reply.message}` : ''}`);
   }
-  return reply.data.filter((app) => typeof app?.code === 'string');
+  return visibleApps(reply.data.filter((app) => typeof app?.code === 'string'));
 }
