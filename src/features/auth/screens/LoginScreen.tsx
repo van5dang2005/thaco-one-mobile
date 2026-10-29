@@ -194,7 +194,7 @@ export function LoginScreen() {
     }
   };
 
-  const contactIt = () => (env.itSupportPhone ? void Linking.openURL(`tel:${env.itSupportPhone}`) : Alert.alert(t('auth.contactIt'), t('auth.contactItMessage')));
+  const contactIt = () => (env.itSupportEmail ? void Linking.openURL(`mailto:${env.itSupportEmail}`).catch(() => Alert.alert(t('auth.contactIt'), env.itSupportEmail)) : Alert.alert(t('auth.contactIt'), t('auth.contactItMessage')));
   const fieldError = (key?: string) => (key ? t(key as 'validation.required', { max: 100 }) : undefined);
   const submit = handleSubmit(onSubmit);
 

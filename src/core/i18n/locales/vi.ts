@@ -231,7 +231,7 @@ const vi = {
     sessionExpired: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
     needHelp: 'Cần hỗ trợ?',
     contactIt: 'Liên hệ IT nội bộ',
-    contactItMessage: 'Gọi tổng đài IT nội bộ hoặc gửi yêu cầu qua cổng hỗ trợ của đơn vị.',
+    contactItMessage: 'Gửi email cho IT nội bộ hoặc gửi yêu cầu qua cổng hỗ trợ của đơn vị.',
     version: 'THACO ONE · {{version}}',
     language: 'Tiếng Việt',
     signingIn: 'Đang đăng nhập…',

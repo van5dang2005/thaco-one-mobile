@@ -24,8 +24,8 @@ export const env = {
   guestApiUrl: trimSlash(process.env.EXPO_PUBLIC_GUEST_API_URL || 'https://lichkhachapi.thaco.com.vn'),
   /** Origin of thaco_be_ql_van_thu (no trailing /api); also serves the document files. */
   documentApiUrl: trimSlash(process.env.EXPO_PUBLIC_DOCUMENT_API_URL || 'https://vanthuapi.thaco.com.vn'),
-  /** Internal IT hotline behind "Liên hệ IT nội bộ" (login and Profile); empty shows a message instead. */
-  itSupportPhone: process.env.EXPO_PUBLIC_IT_SUPPORT_PHONE ?? '',
+  /** Internal IT support mailbox behind "Hỗ trợ IT" (login and Profile); empty shows a message instead. */
+  itSupportEmail: process.env.EXPO_PUBLIC_IT_SUPPORT_EMAIL ?? '',
   /** THACO apps portal: which applications (parcel, room, văn thư…) the signed-in account may use. */
   appsApiUrl: trimSlash(process.env.EXPO_PUBLIC_APPS_API_URL || 'https://appsapi.thaco.com.vn'),
   /**

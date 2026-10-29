@@ -231,7 +231,7 @@ const en: Translation = {
     sessionExpired: 'Your session has expired. Please sign in again.',
     needHelp: 'Need help?',
     contactIt: 'Contact internal IT',
-    contactItMessage: 'Call the internal IT hotline or file a request through your unit’s support portal.',
+    contactItMessage: 'Email internal IT or file a request through your unit’s support portal.',
     version: 'THACO ONE · {{version}}',
     language: 'English',
     signingIn: 'Signing in…',

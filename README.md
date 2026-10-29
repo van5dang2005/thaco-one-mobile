@@ -31,7 +31,7 @@ Cấu hình app nằm ở `app.config.ts`. Biến môi trường được quản
 | `EXPO_PUBLIC_ESIGN_IOS_URL`, `EXPO_PUBLIC_ESIGN_ANDROID_URL`, `EXPO_PUBLIC_ESIGN_IOS_STORE_URL`, `EXPO_PUBLIC_ESIGN_ANDROID_STORE_URL` | Ô "Trình ký hồ sơ THACO" (portal `ESIGN_WEB`) mở app THACO ESIGN thay vì web; không mở được thì gợi ý cửa hàng. Link để trống: mở thẳng trang cửa hàng (Android E-Sign chưa có link). Mặc định nằm trong `src/core/config/env.ts` |
 | `EXPO_PUBLIC_PAYTIME_IOS_URL`, `EXPO_PUBLIC_PAYTIME_ANDROID_URL`, `EXPO_PUBLIC_PAYTIME_IOS_STORE_URL`, `EXPO_PUBLIC_PAYTIME_ANDROID_STORE_URL` | Ô "Chấm công PAYTIME" (portal `PAYTIME`) mở app THACO Paytime (`vn.com.thaco.paytime://`, theo bundle id như E-Sign), tương tự |
 | `EXPO_PUBLIC_SSO_ISSUER`, `EXPO_PUBLIC_SSO_CLIENT_ID`, `EXPO_PUBLIC_SSO_SCOPES` | THACO SSO (Keycloak). Form đăng nhập luôn gửi tài khoản tới realm này (không mở trình duyệt), nên `CLIENT_ID` bắt buộc: client public, bật *Direct access grants*. Mặc định issuer `https://sso.thaco.com.vn/realms/thacogroup`, scope `openid profile email` |
-| `EXPO_PUBLIC_IT_SUPPORT_PHONE` | Số hotline IT ở màn đăng nhập (tùy chọn) |
+| `EXPO_PUBLIC_IT_SUPPORT_EMAIL` | Email hỗ trợ IT ở nút "Hỗ trợ IT" (màn đăng nhập và Hồ sơ, tùy chọn) |
 | `GOOGLE_SERVICES_JSON_BASE64`, `GOOGLE_SERVICES_PLIST_BASE64` | Base64 của `google-services.json` / `GoogleService-Info.plist` (Firebase, dùng cho Crashlytics), tạo bằng `base64 -i <file>`. Git bỏ qua hai file gốc. Cần có ở **cả ba** môi trường trên expo.dev, vì bản build nào cũng chứa Firebase |
 
 `EXPO_PUBLIC_*` được nhúng thẳng vào app nên không để bí mật trong đó. Khi tạo biến trên expo.dev, chọn visibility **Plain text** hoặc **Sensitive**: build local không đọc được biến **Secret**.
