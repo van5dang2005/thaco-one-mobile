@@ -42,5 +42,13 @@ export function useFontStyle(weight: FontWeight = 'regular', mono = false): Text
   return fontStyle(weight, mono);
 }
 
-/** Upper bound for Dynamic Type / font scale so dense layouts stay usable. */
-export const MAX_FONT_SCALE = 1.35;
+/**
+ * Upper bound for Dynamic Type / font scale so dense layouts stay usable, down to 360dp Android phones
+ * (720px wide) at the largest system font.
+ */
+export const MAX_FONT_SCALE = 1.2;
+
+/** A text's own `maxFontSizeMultiplier`, which may only tighten `MAX_FONT_SCALE` (RN reads 0 / unset as "no limit"). */
+export function capFontScale(multiplier?: number | null): number {
+  return multiplier && multiplier >= 1 ? Math.min(multiplier, MAX_FONT_SCALE) : MAX_FONT_SCALE;
+}

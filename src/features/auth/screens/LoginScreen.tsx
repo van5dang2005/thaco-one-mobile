@@ -5,7 +5,8 @@ import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Alert, AppState, KeyboardAvoidingView, Linking, type NativeEventSubscription, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, AppState, KeyboardAvoidingView, Linking, type NativeEventSubscription, Platform, Pressable, TextInput, View } from 'react-native';
+import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { env, loginDomains } from '@/core/config/env';
@@ -57,6 +58,9 @@ const lastDomain = () => {
 /** Member companies of the THACO group on the header: proper names, the same in every language. */
 const groupCompanies = ['THILOGI', 'THACO INDUSTRIES', 'THACO AUTO', 'THACO AGRI', 'THISO', 'ĐẠI QUANG MINH'] as const;
 
+/** Gap between the status bar and the header's first row (wordmark, language). */
+const HEADER_TOP_GAP = 14;
+
 /** Đăng nhập (6a): blue header with the portal title, a white form card over it, a security note and the footer. */
 export function LoginScreen() {
   const { t } = useTranslation();
@@ -83,6 +87,13 @@ export function LoginScreen() {
     },
   });
   const domain = useWatch({ control, name: 'domain' });
+  // The whole page scrolls (large fonts, open keyboard): a header-blue band fades in under the status bar and is
+  // opaque by the time the first row reaches it, so no text runs under the clock and battery.
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const statusBarBand = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [0, HEADER_TOP_GAP], [0, 1], Extrapolation.CLAMP) }));
 
   useEffect(() => {
     let cancelled = false;
@@ -200,9 +211,15 @@ export function LoginScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1" style={{ backgroundColor: colors.canvas }}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 16) }} bounces={false}>
+      <Animated.ScrollView
+        keyboardShouldPersistTaps="handled"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(insets.bottom, 16) }}
+        bounces={false}
+      >
         {/* Header */}
-        <View className="overflow-hidden" style={{ backgroundColor: bg, paddingTop: insets.top + 14, paddingHorizontal: 22, paddingBottom: 96 }}>
+        <View className="overflow-hidden" style={{ backgroundColor: bg, paddingTop: insets.top + HEADER_TOP_GAP, paddingHorizontal: 22, paddingBottom: 96 }}>
           <LoginHeaderArt />
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-3" accessibilityRole="header" accessibilityLabel="THACO ONE">
@@ -232,7 +249,7 @@ export function LoginScreen() {
           <Text weight="semibold" className="mt-10" style={{ fontSize: 13, lineHeight: 17, color: text3 }}>
             {t('auth.portal')}
           </Text>
-          <Text weight="bold" accessibilityRole="header" className="mt-2" style={{ fontSize: 34, lineHeight: 41, letterSpacing: -0.8, color: fg }}>
+          <Text weight="bold" accessibilityRole="header" maxFontSizeMultiplier={1.1} className="mt-2" style={{ fontSize: 34, lineHeight: 41, letterSpacing: -0.8, color: fg }}>
             {t('auth.headline')}
           </Text>
           <View className="mt-4 flex-row flex-wrap gap-2">
@@ -334,14 +351,15 @@ export function LoginScreen() {
             )}
           />
 
-          <View className="flex-row items-center justify-between">
+          {/* Wraps: with a large system font "Quên mật khẩu?" moves to a line of its own (still on the right) instead of off the card. */}
+          <View className="flex-row flex-wrap items-center gap-x-3">
             <Pressable
               testID="login-remember"
               accessibilityRole="checkbox"
               accessibilityState={{ checked: remember }}
               onPress={() => setRemember((v) => !v)}
               hitSlop={8}
-              className="min-h-[36px] flex-row items-center gap-2 active:opacity-70"
+              className="min-h-[36px] flex-shrink flex-row items-center gap-2 active:opacity-70"
             >
               <View
                 className="h-5 w-5 items-center justify-center rounded-[6px]"
@@ -349,11 +367,11 @@ export function LoginScreen() {
               >
                 {remember ? <Icon icon={CheckIcon} size={13} weight="bold" color="on-primary" /> : null}
               </View>
-              <Text className="text-ink-2" style={{ fontSize: 13, lineHeight: 17 }}>
+              <Text className="flex-shrink text-ink-2" style={{ fontSize: 13, lineHeight: 17 }}>
                 {t('auth.remember')}
               </Text>
             </Pressable>
-            <Pressable accessibilityRole="link" hitSlop={8} onPress={() => Alert.alert(t('auth.forgotTitle'), t('auth.forgotMessage'))} className="active:opacity-60">
+            <Pressable accessibilityRole="link" hitSlop={8} onPress={() => Alert.alert(t('auth.forgotTitle'), t('auth.forgotMessage'))} className="ml-auto min-h-[36px] justify-center active:opacity-60">
               <Text weight="semibold" className="text-primary" style={{ fontSize: 13, lineHeight: 17 }}>
                 {t('auth.forgot')}
               </Text>
@@ -402,7 +420,7 @@ export function LoginScreen() {
         </View> */}
 
         {/* Footer */}
-        <View className="mt-auto flex-row items-center justify-between px-5 pt-8">
+        <View className="mt-auto flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 pt-8">
           <Text mono className="text-subtle" style={{ fontSize: 11, lineHeight: 15 }}>
             {t('auth.footer', { version: env.appVersion, year: new Date().getFullYear() })}
           </Text>
@@ -413,7 +431,8 @@ export function LoginScreen() {
             </Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: bg }, statusBarBand]} />
 
       <SelectSheet
         testID="login-domain-sheet"

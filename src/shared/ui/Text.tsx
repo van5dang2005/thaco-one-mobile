@@ -1,6 +1,6 @@
 import { Platform, Text as RNText, type TextProps as RNTextProps } from 'react-native';
 
-import { MAX_FONT_SCALE, useFontStyle, type FontWeight } from '@/core/theme/fonts';
+import { capFontScale, useFontStyle, type FontWeight } from '@/core/theme/fonts';
 import { cn } from '@/shared/lib/cn';
 
 export type TextProps = RNTextProps & {
@@ -12,14 +12,14 @@ export type TextProps = RNTextProps & {
   className?: string;
 };
 
-export function Text({ weight = 'regular', mono = false, numeric = false, className, style, ...rest }: TextProps) {
+export function Text({ weight = 'regular', mono = false, numeric = false, className, style, maxFontSizeMultiplier, ...rest }: TextProps) {
   const font = useFontStyle(weight, mono);
   return (
     <RNText
-      maxFontSizeMultiplier={MAX_FONT_SCALE}
       // Android's default "highQuality" breaking mis-measures custom fonts and clips the last word.
       textBreakStrategy={Platform.OS === 'android' ? 'simple' : undefined}
       {...rest}
+      maxFontSizeMultiplier={capFontScale(maxFontSizeMultiplier)}
       className={cn('text-body text-ink', className)}
       style={[font, numeric && tabular, style]}
     />

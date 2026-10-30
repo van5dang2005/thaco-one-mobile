@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Pressable, TextInput, View } from 'react-native';
 
-import { useFontStyle } from '@/core/theme/fonts';
+import { MAX_FONT_SCALE, useFontStyle } from '@/core/theme/fonts';
 
 import { Icon } from './Icon';
 import { SearchIcon, XIcon } from './icons';
@@ -20,6 +20,7 @@ export function HeaderSearch({ value, onChange, onClose, placeholder, testID }: 
       <TextInput
         testID={testID}
         autoFocus
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
