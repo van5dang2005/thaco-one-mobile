@@ -101,8 +101,9 @@ export function LoginScreen() {
     void biometricKind().then((kind) => {
       if (cancelled) return;
       setBiometric(kind);
-      // Ask for Face ID / fingerprint right away at launch or after an expired session, not after signing out by hand.
-      if (kind === 'none' || !isBiometricEnabled() || useSessionStore.getState().signOutReason === 'user') return;
+      // Ask for Face ID / fingerprint right away at launch or after an expired session, not after signing out by hand
+      // nor when "Ghi nhớ đăng nhập" is off (the button still signs in).
+      if (kind === 'none' || !isBiometricEnabled() || !rememberedByDefault() || useSessionStore.getState().signOutReason === 'user') return;
       if (AppState.currentState !== 'background') {
         void onBiometric();
         return;
@@ -149,18 +150,11 @@ export function LoginScreen() {
     ]);
   };
 
-  const rememberUsername = (username: string) => {
-    kv.set(kvKeys.rememberLogin, remember);
-    if (remember) kv.set(kvKeys.rememberedUsername, username.trim());
-    else kv.remove(kvKeys.rememberedUsername);
-  };
-
   const onSubmit = async (values: LoginForm) => {
     setSubmitError(null);
     setBusy(true);
     try {
-      await signIn(values);
-      rememberUsername(values.username);
+      await signIn(values, { remember });
       offerBiometric(values);
     } catch (error) {
       setSubmitError(errorMessage(error, t));
@@ -172,9 +166,7 @@ export function LoginScreen() {
   const finishBiometric = async (session: BiometricSession) => {
     setBusy(true);
     try {
-      if ((await signInWithBiometric(session)) === 'signedIn') {
-        rememberUsername(session.account.username);
-      } else {
+      if ((await signInWithBiometric(session, { remember })) === 'expired') {
         setBiometricOn(false);
         setSubmitError(t('auth.biometricExpired'));
       }

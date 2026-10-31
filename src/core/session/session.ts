@@ -11,6 +11,9 @@ import { endSsoSession, fetchSsoAccount, passwordGrant, refreshGrant, refreshTok
 import { SsoError } from './SsoError';
 import { type TokenPair, tokenStore } from './tokenStore';
 
+/** `remember`: the "Ghi nhớ đăng nhập" box on the login form. */
+type SignInOptions = { remember: boolean };
+
 /**
  * Keycloak login for the form: `name@domain` (Keycloak accepts the email) or, with no domain, the MSNV,
  * which is the Keycloak username. An email typed in full is kept as is.
@@ -28,9 +31,9 @@ function saveApps(apps: MyApp[] | null) {
  * "Keycloak" scheme accepts it; the THACO apps portal (`my-apps`) then says which of them the account
  * may use, so the app never calls one that would answer 401 (and end the session).
  */
-export async function signIn(request: LoginRequest) {
+export async function signIn(request: LoginRequest, { remember }: SignInOptions) {
   const pair = await passwordGrant(ssoUsername(request), request.password);
-  await startSession(pair, request, { endOnFailure: true });
+  await startSession(pair, request, { endOnFailure: true, remember });
 }
 
 /**
@@ -38,7 +41,7 @@ export async function signIn(request: LoginRequest) {
  * offline session, which signing out leaves alive for the next time. `expired`: Keycloak revoked it, or it went
  * unused past Offline Session Idle, so biometric sign-in was turned off.
  */
-export async function signInWithBiometric({ refreshToken, account }: BiometricSession): Promise<'signedIn' | 'expired'> {
+export async function signInWithBiometric({ refreshToken, account }: BiometricSession, { remember }: SignInOptions): Promise<'signedIn' | 'expired'> {
   let pair: TokenPair;
   try {
     pair = await refreshGrant(refreshToken);
@@ -47,12 +50,15 @@ export async function signInWithBiometric({ refreshToken, account }: BiometricSe
     await disableBiometric();
     return 'expired';
   }
-  await startSession({ ...pair, refreshToken: pair.refreshToken || refreshToken }, account, { endOnFailure: false });
+  await startSession({ ...pair, refreshToken: pair.refreshToken || refreshToken }, account, { endOnFailure: false, remember });
   return 'signedIn';
 }
 
-/** Confirms a new pair with Keycloak and starts the app session on it. `endOnFailure`: the pair's Keycloak session may be ended when that fails. */
-async function startSession(pair: TokenPair, login: Pick<LoginRequest, 'username' | 'domain'>, { endOnFailure }: { endOnFailure: boolean }) {
+/**
+ * Confirms a new pair with Keycloak and starts the app session on it. `endOnFailure`: the pair's Keycloak session may be ended when that fails.
+ * `remember`: "Ghi nhớ đăng nhập" (keeps the session across app launches and the username on the login form).
+ */
+async function startSession(pair: TokenPair, login: Pick<LoginRequest, 'username' | 'domain'>, { endOnFailure, remember }: { endOnFailure: boolean } & SignInOptions) {
   let account: SsoAccount;
   try {
     account = await fetchSsoAccount(pair.token);
@@ -67,6 +73,9 @@ async function startSession(pair: TokenPair, login: Pick<LoginRequest, 'username
 
   kv.set(kvKeys.lastUsername, login.username);
   kv.set(kvKeys.lastDomain, login.domain);
+  kv.set(kvKeys.rememberLogin, remember);
+  if (remember) kv.set(kvKeys.rememberedUsername, login.username.trim());
+  else kv.remove(kvKeys.rememberedUsername);
   writeJSON(kvKeys.ssoAccount, { id: account.id, username: account.username, email: account.email } satisfies SsoAccount);
   saveApps(apps);
   // A different person may be signing in on a shared device; never show their cached data, and never let this
@@ -142,7 +151,8 @@ function refreshTokenExpired({ refreshToken, receivedAt }: TokenPair) {
 
 let signingOut = false;
 
-export async function signOut(reason: Exclude<SignOutReason, 'launch'> = 'user') {
+/** `launch`: a session "Ghi nhớ đăng nhập" did not keep, ended when the app starts again. */
+export async function signOut(reason: SignOutReason = 'user') {
   if (signingOut) return;
   signingOut = true;
   try {
@@ -178,12 +188,19 @@ export async function restoreSession() {
     await signOut('expired');
     return;
   }
-  const username = kv.getString(kvKeys.lastUsername) ?? null;
-  // A session started by an app version that left the previous person's biometric sign-in on.
-  if (username) await dropOthersBiometric({ login: { username, domain: kv.getString(kvKeys.lastDomain) ?? '' }, userId: readJSON<SsoAccount>(kvKeys.ssoAccount)?.id });
   // Saved by a build that showed apps this one hides.
   const saved = readJSON<MyApp[]>(kvKeys.myApps);
   const apps = saved ? visibleApps(saved) : null;
+  if (kv.getBoolean(kvKeys.rememberLogin) === false) {
+    // Signed in without "Ghi nhớ đăng nhập": the session lasted until the app closed. The saved apps name the
+    // back-ends holding this phone's push token, so signing out can withdraw it there.
+    if (apps) useSessionStore.getState().setApps(apps);
+    await signOut('launch');
+    return;
+  }
+  const username = kv.getString(kvKeys.lastUsername) ?? null;
+  // A session started by an app version that left the previous person's biometric sign-in on.
+  if (username) await dropOthersBiometric({ login: { username, domain: kv.getString(kvKeys.lastDomain) ?? '' }, userId: readJSON<SsoAccount>(kvKeys.ssoAccount)?.id });
   useSessionStore.getState().markSignedIn({ username, apps });
   void refreshMyApps();
 }

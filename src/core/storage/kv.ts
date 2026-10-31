@@ -17,7 +17,7 @@ export const kvKeys = {
   ssoAccount: 'auth.ssoAccount',
   /** Apps the THACO apps portal grants the signed-in account (`MyApp[]`). */
   myApps: 'auth.myApps',
-  /** "Ghi nhớ đăng nhập": prefill the login form with `rememberedUsername`. */
+  /** "Ghi nhớ đăng nhập" at the last sign-in: off ends the session when the app starts again; on prefills the login form with `rememberedUsername`. */
   rememberLogin: 'auth.rememberLogin',
   rememberedUsername: 'auth.rememberedUsername',
   /** `{ username, domain, sessionId, userId }`: the account Face ID / fingerprint signs in, its Keycloak user and the Keycloak session of its offline token. Set only while biometric sign-in is on. */
